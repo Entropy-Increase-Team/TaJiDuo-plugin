@@ -1,0 +1,8 @@
+tajiduo:
+  base_url: 'https://tajiduo.shallow.ink'
+  request_timeout_ms: 15000
+  captcha_wait_timeout_ms: 300000
+  community_task_timeout_ms: 300000
+  action_delay_ms: 3000
+  step_delay_ms: 8000
+  between_communities_ms: 15000
