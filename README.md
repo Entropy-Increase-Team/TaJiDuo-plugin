@@ -4,6 +4,16 @@ Yunzai-Bot 的塔吉多社区插件。
 
 当前版本专注于塔吉多登录态管理与社区签到，支持幻塔、异环，以及一键社区签到。
 
+## 测试 API Key
+
+以下测试 `API Key` 可直接填写到配置里的 `api_key` 字段用于联调：
+
+```yaml
+api_key: 'tjd-8FtI7adTkMHMjZaE'
+```
+
+如果你只是先跑通插件，建议先直接使用这一个测试 `API Key`。
+
 ## 功能简介
 
 - 短信验证码登录塔吉多账号
@@ -62,10 +72,6 @@ tajiduo:
 - `action_delay_ms`: 单步动作间隔
 - `step_delay_ms`: 步骤间隔
 - `between_communities_ms`: 一键社区签到时两个社区之间的间隔
-
-测试 API Key：
-
-- `tjd-8FtI7adTkMHMjZaE`
 
 说明：
 
@@ -141,3 +147,9 @@ tajiduo:
 ## 反馈
 
 - 反馈 QQ 群：`1090940860`
+
+## 协议
+
+本项目采用 `GNU AGPLv3` 协议开源。
+
+- 协议文件：[LICENSE](./LICENSE)
