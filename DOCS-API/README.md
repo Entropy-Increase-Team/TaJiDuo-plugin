@@ -7,7 +7,7 @@
 - 第三方客户端只需要保存 `fwt`
 - 首次登录建会话时由上游后端注入 `X-Platform-Id` 与 `X-Platform-User-Id`
 - 默认启用全局 `apikey` 校验；除 `/health*` 和 `/_internal/api-keygen/*` 外都要携带有效 API Key
-- 游戏与社区接口优先用 `fwt`，也支持 `X-Framework-Token`
+- 本文档默认统一通过请求头 `X-API-Key` + `X-Framework-Token` 传递鉴权信息
 - 大多数业务接口都必须显式传 `fwt`；兑换码接口不要求 `fwt`
 
 ## 文档入口
@@ -35,6 +35,11 @@
 | `GET /api/v1/games` | 已接入游戏列表 |
 | `GET /api/v1/games/redeem-codes` | 兑换码列表 |
 | `POST /api/v1/games/redeem-codes` | 新增兑换码，仅管理员 API Key |
+| `GET /api/v1/games/shop/goods` | 商城商品列表 |
+| `GET /api/v1/games/shop/goods/:goodsId` | 商城商品详情 |
+| `GET /api/v1/games/shop/coin/state` | 塔吉多币状态 |
+| `GET /api/v1/games/shop/game-roles` | 指定游戏角色列表 |
+| `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
 | `POST /api/v1/login/tajiduo/captcha/send` | 发送短信验证码 |
 | `POST /api/v1/login/tajiduo/captcha/check` | 校验短信验证码 |
 | `POST /api/v1/login/tajiduo/session` | 登录并落库，返回 `username`、`tjdUid`、`fwt`、`platformId`、`platformUserId` |

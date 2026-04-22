@@ -5,8 +5,7 @@
 在调用本文件中的接口前，请先参考 [TaJiDuo-API.md](./TaJiDuo-API.md) 完成：
 
 - `fwt` 获取
-- API Key 传递方式
-- `X-Framework-Token` 传递方式
+- 默认请求头 `X-API-Key` + `X-Framework-Token`
 - 平台层账号管理
 - 首次登录时由上游后端注入 `X-Platform-Id` 与 `X-Platform-User-Id`
 
@@ -48,27 +47,17 @@
 
 ## 登录态使用方式
 
-推荐只用：
-
-```json
-{
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856"
-}
-```
-
-或者请求头：
+本文档默认统一使用请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
 补充：
 
 - 必须显式传 `fwt`
-- 支持请求体 `fwt`
-- 支持请求头 `X-Framework-Token`
-- 支持查询参数 `fwt`
-- 默认还需要传 `X-API-Key` 或 `Authorization: Bearer <api-key>`
+- 本文档默认不再把 `apiKey` 放进 URL，也不再把 `fwt` 放进请求体或查询参数示例
 - 不接受原始 `accessToken / refreshToken / tgdUid / deviceId` 作为业务接口入口
 - 当前 `fwt` 无效、已删除或已失效时返回 `401`
 - 不再自动回落到主账号
@@ -89,12 +78,17 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `POST /api/v1/games/yihuan/sign/app`
 
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
 请求：
 
 ```json
-{
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856"
-}
+{}
 ```
 
 作用：
@@ -136,11 +130,17 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `POST /api/v1/games/yihuan/community/sign/all`
 
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
 请求：
 
 ```json
 {
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856",
   "actionDelayMs": 3000,
   "stepDelayMs": 8000
 }
@@ -193,11 +193,11 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `GET /api/v1/games/yihuan/community/sign/tasks/:taskId`
 
-请求示例：
+请求头：
 
 ```http
-GET /api/v1/games/yihuan/community/sign/tasks/c593bf0748c7496dbe6f50fce89a6b5b?fwt=0d53c6f8f56f4d7abf53dbf4f68e7856
 X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
 执行完成响应示例：
@@ -340,6 +340,7 @@ X-API-Key: your-api-key
 请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
@@ -445,6 +446,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
@@ -483,6 +485,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 

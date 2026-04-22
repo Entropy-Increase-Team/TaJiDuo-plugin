@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=743, initial-scale=1">
+  <title>{{pageTitle}}</title>
+  <link rel="stylesheet" href="{{_res_path}}render/bindings/style.css">
+</head>
+<body>
+  <div class="bindings-page">
+    <div class="title-wrap">
+      <img class="title-bg" src="{{_res_path}}img/bg/UI_YH_Bond_MainUI_Button01_Normal.png" alt="">
+      <div class="title-text">塔吉多账号绑定</div>
+    </div>
+
+    <section class="summary-panel">
+      {{each accountFields item}}
+      <div class="summary-item">
+        <div class="summary-label">{{item.label}}</div>
+        <div class="summary-value">{{item.value}}</div>
+      </div>
+      {{/each}}
+    </section>
+
+    <section class="games-grid">
+      {{each gameBindings item}}
+      <article class="game-panel{{if !item.hasAccount}} is-empty{{/if}}">
+        <img class="game-link" src="{{item.logo}}" alt="{{item.gameName}}">
+
+        {{if item.hasAccount}}
+        <div class="avatar-row">
+          <div class="avatar-box">
+            <img class="avatar-frame" src="{{_res_path}}img/touxiangkuang.png" alt="">
+            <img class="avatar-image" src="{{item.avatar}}" alt="{{item.name}}">
+          </div>
+          <div class="role-copy">
+            <div class="role-name">{{item.name}}</div>
+            <div class="role-meta">Lv.{{item.level}} / {{item.server}}</div>
+            <div class="role-status">{{item.statusText}}</div>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          {{each item.stats stat}}
+          <div class="stat-item">
+            <div class="stat-label">{{stat.label}}</div>
+            <div class="stat-value">{{stat.value}}</div>
+          </div>
+          {{/each}}
+        </div>
+        {{else}}
+        <div class="empty-box">
+          <div class="empty-title">无账号</div>
+          <div class="empty-text">{{item.emptyDescription}}</div>
+        </div>
+        {{/if}}
+      </article>
+      {{/each}}
+    </section>
+  </div>
+</body>
+</html>

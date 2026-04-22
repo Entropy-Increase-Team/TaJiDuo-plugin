@@ -60,7 +60,7 @@ function buildLoginReply (session = {}) {
     `昵称：${session.username || '未返回'}`,
     `塔吉多UID：${session.tgdUid || '未返回'}`,
     '',
-    `后续可直接使用 ${formatCommand('社区签到')}、${formatCommand('幻塔社区签到')}、${formatCommand('异环社区签到')}`
+    `后续可直接使用 ${formatCommand('社区签到')}、${formatCommand('社区签到', 'huanta')}、${formatCommand('社区签到', 'yihuan')}`
   ])
 }
 

@@ -8,6 +8,7 @@
 - 登录建会话
 - 登录态刷新
 - 账号列表 / 主账号切换 / 删除账号
+- 商城列表 / 商品详情 / 角色查询 / 商品兑换
 - 健康检查
 - 游戏目录
 - 跨社区总控
@@ -22,7 +23,7 @@
 - 终端客户端登录时只需要提交手机号、验证码、`deviceId`
 - 调用 TaJiDuo API 的上游后端必须在建会话时注入 `X-Platform-Id` 与 `X-Platform-User-Id`
 - 账号列表、切主账号、删除账号都按 `platformId + platformUserId` 隔离
-- 也支持 `X-Framework-Token`
+- 本文档默认统一通过请求头 `X-Framework-Token` 传递 `fwt`
 - 默认启用全局 `apikey` 校验；除 `/health*` 和 `/_internal/api-keygen/*` 外都必须携带有效 API Key
 - 不再兼容把原始 `accessToken / refreshToken / tgdUid / deviceId` 当作业务接口入口
 - 大多数用户态接口都必须显式传有效 `fwt`
@@ -79,6 +80,11 @@
 | `POST /_internal/api-keygen/grant-admin` | 用控制台秘钥给已有 API Key 提权为管理员 |
 | `GET /api/v1/games/redeem-codes` | 兑换码列表 |
 | `POST /api/v1/games/redeem-codes` | 新增兑换码，仅管理员 API Key |
+| `GET /api/v1/games/shop/goods` | 商城商品列表 |
+| `GET /api/v1/games/shop/goods/:goodsId` | 商城商品详情 |
+| `GET /api/v1/games/shop/coin/state` | 塔吉多币状态 |
+| `GET /api/v1/games/shop/game-roles` | 指定游戏角色列表 |
+| `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
 | `POST /api/v1/login/tajiduo/session` | 登录并保存账号，返回 `username`、展示用 `tjdUid`、`fwt`、`platformId`、`platformUserId` |
 | `POST /api/v1/login/tajiduo/refresh` | 刷新已保存账号 |
 | `GET /api/v1/login/tajiduo/accounts` | 查看账号列表 |
@@ -92,8 +98,8 @@
 1. `/health` 和 `/health/detailed` 默认免鉴权
 2. `/_internal/api-keygen/*` 默认从 API Key 中间件放行，但会在接口内部校验控制台秘钥
 3. 其他接口都需要携带有效 API Key
-4. 默认请求头是 `X-API-Key`
-5. 也支持 `Authorization: Bearer <api-key>`
+4. 本文档默认统一通过请求头 `X-API-Key` 传递 API Key
+5. 接口实现也兼容 `Authorization: Bearer <api-key>`，但本文档默认不再展示
 6. 动态生成的 API Key 固定格式是 `tjd-` 加 16 位随机大小写字母数字
 7. 动态生成的 API Key 元数据持久化在 PostgreSQL
 8. 生成型 API Key 支持 `is_admin` 管理员标记，并可后续提权
@@ -293,17 +299,19 @@ JSON 请求体：
 }
 ```
 
-## 登录态来源顺序
+## 文档默认鉴权写法
 
-当前除登录接口与 `/health*` 外，其他接口只接受以下几种 `fwt` 传递方式：
+当前文档除登录接口与 `/health*` 外，统一按以下请求头传递鉴权信息：
 
-1. 请求体里的 `fwt`
-2. 请求头 `X-Framework-Token`
-3. 查询参数 `fwt`
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
 
 说明：
 
-- 如果以上都没传，接口会直接返回 `缺少 fwt`
+- 本文档默认不再把 `apiKey` 放进 URL，也不再把 `fwt` 放进请求体或查询参数示例
+- 如果没有传 `X-Framework-Token`，接口会直接返回 `缺少 fwt`
 - 如果 `fwt` 不存在、已删除或已失效，接口会直接返回 `当前 fwt 已失效，请重新登录`
 - 不再自动回落到当前主账号
 - 原始字段 `accessToken / refreshToken / tgdUid / deviceId` 不再作为业务接口入口
@@ -332,6 +340,12 @@ X-Platform-User-Id: 123456789
 - 这个登录接口同样需要携带有效 API Key
 
 ### `POST /api/v1/login/tajiduo/captcha/send`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+```
 
 请求体：
 
@@ -366,6 +380,12 @@ X-Platform-User-Id: 123456789
 
 ### `POST /api/v1/login/tajiduo/captcha/check`
 
+请求头：
+
+```http
+X-API-Key: your-api-key
+```
+
 请求体：
 
 ```json
@@ -396,6 +416,7 @@ X-Platform-User-Id: 123456789
 请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Platform-Id: telegram
 X-Platform-User-Id: 123456789
 ```
@@ -440,17 +461,10 @@ X-Platform-User-Id: 123456789
 
 ### `POST /api/v1/login/tajiduo/refresh`
 
-推荐请求体：
-
-```json
-{
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856"
-}
-```
-
-也可以只传请求头：
+请求头：
 
 ```http
+X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
@@ -494,6 +508,13 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 - 后端还会按配置做定时刷新
 
 ### `GET /api/v1/login/tajiduo/accounts`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
 
 说明：
 
@@ -548,12 +569,11 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `POST /api/v1/login/tajiduo/accounts/primary`
 
-请求体：
+请求头：
 
-```json
-{
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856"
-}
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
 响应示例：
@@ -597,6 +617,301 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 - 删除的是指定账号
 - 如果路径里的 `:fwt` 不存在或已被删除，返回 `401 当前 fwt 已失效，请重新登录`
 - 如果删除的是主账号，会自动把同一 `platformId + platformUserId` 下最近使用的下一个账号提升为主账号
+
+## 商城接口
+
+说明：
+
+- 这些接口都要求有效 API Key
+- 同时都要求有效 `fwt`
+- 本文档默认统一通过请求头 `X-Framework-Token` 传递 `fwt`
+- 商城接口当前直接走 TaJiDuo 公共层，不归 `huanta` / `yihuan` 子路由管理
+- `gameId` 由调用方显式指定；当前抓包里幻塔使用的是 `1256`
+
+### `GET /api/v1/games/shop/goods`
+
+查询参数：
+
+- `version`：可选，默认 `0`
+- `count`：可选，默认 `20`
+- `tab`：可选，例如 `all`、`ht`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+请求示例：
+
+```http
+GET /api/v1/games/shop/goods?version=0&count=20&tab=all
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "goods": [
+      {
+        "id": 10,
+        "name": "金币*1000",
+        "cover": "https://serverlist-hotta.wmupd.com/notice_test5/pic/jinbi.png",
+        "icon": "https://serverlist-hotta.wmupd.com/notice_test5/pic/jinbi.png",
+        "price": 300,
+        "exchangeNum": 1,
+        "cycleLimit": 1,
+        "cycleType": 1,
+        "nextStock": 0,
+        "nextTime": 0,
+        "stock": 0,
+        "limit": 0,
+        "tab": "ht",
+        "state": 1
+      }
+    ],
+    "tabs": [
+      {
+        "key": "ht",
+        "name": "幻塔",
+        "gameId": 1256
+      }
+    ],
+    "more": false,
+    "version": 10,
+    "nowTime": 1776811580255,
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+字段说明：
+
+- `stock`：当前库存，对应客户端里的 `库存:1296`、`库存:360`
+- `exchangeNum`：当前周期已兑换次数
+- `cycleLimit`：当前周期限购次数
+- `cycleType`：限购周期类型；当前抓包里 `1` 对应客户端展示的“每月限购”
+- 当前抓包里客户端左上角的 `0/1`、`1/1`，更应按 `exchangeNum / cycleLimit` 理解
+- `limit` 不是当前这版客户端角标文案的直接来源；例如抓包里 `金币*1000` 的 `limit = 0`，但客户端仍显示 `1/1`
+- `nextStock`、`nextTime` 可用于后续补货提示
+- `cover`、`icon` 是商品图片地址
+
+补充说明：
+
+- `GET /api/v1/games/shop/goods` 对做商城列表卡片展示已经基本够用
+- 如果要拿完整兑换限制，例如社区等级、角色等级、服务器类型限制，仍然应该继续调用 `GET /api/v1/games/shop/goods/:goodsId`
+
+### `GET /api/v1/games/shop/goods/:goodsId`
+
+说明：
+
+- `goodsId` 走路径参数
+- 会额外把上游 `rules` JSON 字符串解码到 `rules`
+- 原始字符串仍保留在 `rulesRaw`
+
+请求示例：
+
+```http
+GET /api/v1/games/shop/goods/8
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "goodsId": "8",
+    "item": {
+      "id": 8,
+      "name": "墨晶*60",
+      "price": 1800,
+      "detail": "<p>兑换后发放到游戏邮箱</p>",
+      "rules": "{\"communityLevel\":3,\"gameRoleLevel\":60,\"supportServerType\":\"0\"}"
+    },
+    "rules": {
+      "communityLevel": 3,
+      "gameRoleLevel": 60,
+      "supportServerType": "0"
+    },
+    "rulesRaw": "{\"communityLevel\":3,\"gameRoleLevel\":60,\"supportServerType\":\"0\"}",
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+### `GET /api/v1/games/shop/coin/state`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "todayGet": 110,
+    "todayTotal": 150,
+    "total": 530,
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+### `GET /api/v1/games/shop/game-roles`
+
+查询参数：
+
+- `gameId`：必填，例如 `1256`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+请求示例：
+
+```http
+GET /api/v1/games/shop/game-roles?gameId=1256
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "gameId": "1256",
+    "bindRole": 62719407578902,
+    "roles": [
+      {
+        "gameId": 1256,
+        "gender": 1,
+        "lev": 44,
+        "roleId": 62719407578902,
+        "roleName": "㸚#a",
+        "serverId": 14603,
+        "serverName": "重塑未来"
+      }
+    ],
+    "raw": {
+      "bindRole": 62719407578902,
+      "roles": [
+        {
+          "gameId": 1256,
+          "gender": 1,
+          "lev": 44,
+          "roleId": 62719407578902,
+          "roleName": "㸚#a",
+          "serverId": 14603,
+          "serverName": "重塑未来"
+        }
+      ]
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+### `POST /api/v1/games/shop/exchange`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+请求体：
+
+```json
+{
+  "goodsId": "10",
+  "gameId": "1256",
+  "roleId": "62719407578902",
+  "count": 1
+}
+```
+
+说明：
+
+- `goodsId`、`gameId`、`roleId` 必填
+- `count` 可选，默认 `1`
+- 当上游返回例如 `塔吉多币不足` 时，本接口会直接返回对应错误消息
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "goodsId": "10",
+    "gameId": "1256",
+    "roleId": "62719407578902",
+    "count": 1,
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+失败响应示例：
+
+```json
+{
+  "code": 208,
+  "message": "塔吉多币不足",
+  "data": {
+    "upstream": {
+      "success": false,
+      "httpStatus": 200,
+      "code": 208,
+      "message": "塔吉多币不足"
+    }
+  }
+}
+```
 
 ## 公共接口
 
@@ -656,24 +971,11 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
           "autoRefreshEnabled": true,
           "autoRefreshIntervalMinutes": 30,
           "autoRefreshTimeoutSeconds": 15
-        },
-        "upstreamEndpoint": {
-          "sendCaptcha": "bbs-api.tajiduo.com",
-          "checkCaptcha": "bbs-api.tajiduo.com",
-          "login": "bbs-api.tajiduo.com",
-          "userCenter": "bbs-api.tajiduo.com",
-          "refreshToken": "bbs-api.tajiduo.com"
         }
       },
       "huanta": {
         "proxyConfigured": false,
-        "timeoutSeconds": 30,
-        "upstreamEndpoint": {
-          "getBindRole": "bbs-api.tajiduo.com",
-          "getGameRoles": "bbs-api.tajiduo.com",
-          "appSignIn": "bbs-api.tajiduo.com",
-          "gameSignIn": "bbs-api.tajiduo.com"
-        }
+        "timeoutSeconds": 30
       },
       "postgresql": {
         "configured": true,
@@ -753,6 +1055,13 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `POST /api/v1/games/community/sign/all`
 
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
 固定顺序：
 
 1. 幻塔社区 5 步任务
@@ -763,7 +1072,6 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ```json
 {
-  "fwt": "0d53c6f8f56f4d7abf53dbf4f68e7856",
   "actionDelayMs": 3000,
   "stepDelayMs": 8000,
   "betweenCommunitiesMs": 15000
@@ -815,11 +1123,11 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ### `GET /api/v1/games/community/sign/tasks/:taskId`
 
-请求示例：
+请求头：
 
 ```http
-GET /api/v1/games/community/sign/tasks/3e52d60aa7c0441f8f70852f634c6540?fwt=0d53c6f8f56f4d7abf53dbf4f68e7856
 X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
 执行中响应示例：

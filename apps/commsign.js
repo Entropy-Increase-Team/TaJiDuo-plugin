@@ -2,6 +2,7 @@ import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import TaJiDuoApi from '../model/api.js'
 import { clearUserSession, getUserSession, listUserSessions } from '../model/store.js'
+import { pluginName } from '../model/path.js'
 import Config from '../utils/config.js'
 import {
   AUTH_EXPIRED_MESSAGE,
@@ -54,6 +55,16 @@ const ALL_COMMUNITY_META = Object.freeze({
   signTitle: '塔吉多社区签到',
   queryTitle: '塔吉多社区查询',
   queryForwardTitle: '塔吉多社区查询结果'
+})
+
+const COMMUNITY_SIGN_RENDER_PATH = 'render/signin/index'
+const COMMUNITY_SIGN_RENDER_SCALE = 1.35
+const EMPTY_RENDER_TASK = Object.freeze({
+  index: '-',
+  name: '暂无任务数据',
+  value: '未返回',
+  state: 'empty',
+  empty: true
 })
 
 function isPlainObject (value) {
@@ -332,6 +343,166 @@ function buildAllCommunitySignMessages (data = {}) {
   return [summaryMessage, ...detailMessages]
 }
 
+function getTaskRemaining (task = {}) {
+  const remaining = toFiniteNumber(task?.remaining)
+  if (remaining !== undefined) {
+    return remaining
+  }
+
+  const target = getTaskProgressTarget(task)
+  if (target === undefined) {
+    return undefined
+  }
+
+  return Math.max(target - getTaskCompleteTimes(task), 0)
+}
+
+function formatRenderTaskValue (task = {}) {
+  if (isTaskCompleted(task)) {
+    return '已完成'
+  }
+
+  const remaining = getTaskRemaining(task)
+  const progress = formatTaskProgress(task)
+  return remaining !== undefined ? `${progress} | 剩余 ${remaining}` : progress
+}
+
+function buildRenderTaskItems (tasks = []) {
+  const items = Array.isArray(tasks) ? tasks.filter((task) => isPlainObject(task)) : []
+  if (items.length === 0) {
+    return [EMPTY_RENDER_TASK]
+  }
+
+  return items.map((task, index) => ({
+    index: index + 1,
+    name: task?.title || task?.taskKey || `任务${index + 1}`,
+    value: formatRenderTaskValue(task),
+    state: isTaskCompleted(task) ? 'done' : 'pending',
+    empty: false
+  }))
+}
+
+function getRenderRecordStatus (data = {}) {
+  if (data?.success === true) {
+    return 'success'
+  }
+
+  if (Array.isArray(data?.tasksBefore) || Array.isArray(data?.tasksAfter)) {
+    return 'partial'
+  }
+
+  return 'failed'
+}
+
+function buildRenderRecord (gameName = '', data = {}) {
+  return {
+    gameName: String(gameName || data?.gameName || '社区').trim() || '社区',
+    resultText: summarizeResultObject(data) || '已返回结果',
+    status: getRenderRecordStatus(data),
+    beforeTitle: '执行前任务',
+    afterTitle: '执行后任务',
+    beforeTasks: buildRenderTaskItems(data?.tasksBefore),
+    afterTasks: buildRenderTaskItems(data?.tasksAfter)
+  }
+}
+
+function buildAllCommunityRenderRecords (data = {}) {
+  const sections = getNestedCommunitySections(data)
+  if (sections.length > 0) {
+    return sections.map(({ title, section }) => buildRenderRecord(title, section))
+  }
+
+  if (isPlainObject(data)) {
+    return [buildRenderRecord(data?.gameName || '社区', data)]
+  }
+
+  return []
+}
+
+function buildSingleCommunityRenderRecord (communityName = '', data = {}) {
+  return buildRenderRecord(communityName || '社区', data)
+}
+
+function buildRenderPageSubtitle (records = []) {
+  const names = records
+    .map((item) => String(item?.gameName || '').trim())
+    .filter(Boolean)
+
+  if (names.length === 0) {
+    return ''
+  }
+
+  return names.join(' / ')
+}
+
+function buildRenderSummaryStatus (data = {}, records = []) {
+  const successCount = records.filter((item) => item?.status === 'success').length
+  const partialCount = records.filter((item) => item?.status === 'partial').length
+
+  if (records.length > 0) {
+    if (successCount === records.length) {
+      return '执行成功'
+    }
+
+    if (successCount > 0 || partialCount > 0) {
+      return '部分完成'
+    }
+
+    return '执行失败'
+  }
+
+  if (data?.success === true) {
+    return '执行成功'
+  }
+
+  return '执行失败'
+}
+
+function buildRenderSummaryMeta (records = []) {
+  if (records.length === 0) {
+    return ''
+  }
+
+  const successCount = records.filter((item) => item?.status === 'success').length
+  const partialCount = records.filter((item) => item?.status === 'partial').length
+  const failedCount = records.filter((item) => item?.status === 'failed').length
+  const parts = []
+
+  if (successCount > 0) {
+    parts.push(`成功 ${successCount}`)
+  }
+
+  if (partialCount > 0) {
+    parts.push(`部分 ${partialCount}`)
+  }
+
+  if (failedCount > 0) {
+    parts.push(`失败 ${failedCount}`)
+  }
+
+  return parts.join(' | ')
+}
+
+function buildCommunitySignRenderData (title = '', data = {}, options = {}) {
+  const {
+    records = [],
+    subtitle = ''
+  } = options
+
+  const renderRecords = records.length > 0 ? records : buildAllCommunityRenderRecords(data)
+
+  return {
+    pageTitle: String(title || ALL_COMMUNITY_META.signTitle).trim() || ALL_COMMUNITY_META.signTitle,
+    pageSubtitle: String(subtitle || buildRenderPageSubtitle(renderRecords)).trim(),
+    summary: {
+      statusText: buildRenderSummaryStatus(data, renderRecords),
+      description: summarizeResultObject(data) || '社区任务执行完成',
+      metaText: buildRenderSummaryMeta(renderRecords)
+    },
+    records: renderRecords
+  }
+}
+
 function pickLevelValue (payload = {}, ...keys) {
   const sources = [
     payload,
@@ -548,7 +719,7 @@ function describeAutoSignTarget (item = {}) {
   return parts.join(' | ') || '未命名账号'
 }
 
-export class Sign extends plugin {
+export class CommSign extends plugin {
   constructor () {
     super({
       name: '[TaJiDuo-plugin] 社区签到',
@@ -559,9 +730,13 @@ export class Sign extends plugin {
         { reg: buildCommandReg('社区签到'), fnc: 'signAllCommunities' },
         { reg: buildCommandReg('幻塔社区签到'), fnc: 'signHuantaCommunity' },
         { reg: buildCommandReg('异环社区签到'), fnc: 'signYihuanCommunity' },
+        { reg: buildCommandReg('社区签到', 'huanta'), fnc: 'signHuantaCommunity' },
+        { reg: buildCommandReg('社区签到', 'yihuan'), fnc: 'signYihuanCommunity' },
         { reg: buildCommandReg('社区查询'), fnc: 'queryAllCommunities' },
         { reg: buildCommandReg('幻塔社区查询'), fnc: 'queryHuantaCommunity' },
-        { reg: buildCommandReg('异环社区查询'), fnc: 'queryYihuanCommunity' }
+        { reg: buildCommandReg('异环社区查询'), fnc: 'queryYihuanCommunity' },
+        { reg: buildCommandReg('社区查询', 'huanta'), fnc: 'queryHuantaCommunity' },
+        { reg: buildCommandReg('社区查询', 'yihuan'), fnc: 'queryYihuanCommunity' }
       ]
     })
 
@@ -580,7 +755,11 @@ export class Sign extends plugin {
       const fwt = await this.getStoredFwt()
       await this.reply(`${ALL_COMMUNITY_META.signTitle}开始执行，请稍候...`)
       const data = await this.runAllCommunitySign(fwt)
-      await this.replyQueryForward(`${ALL_COMMUNITY_META.signTitle}结果`, buildAllCommunitySignMessages(data))
+      await this.replyCommunitySignResult(ALL_COMMUNITY_META.signTitle, data, {
+        forwardTitle: `${ALL_COMMUNITY_META.signTitle}结果`,
+        fallbackUseForward: true,
+        fallbackMessages: buildAllCommunitySignMessages(data)
+      })
       return true
     } catch (error) {
       return this.replyFailure(`${ALL_COMMUNITY_META.signTitle}失败`, error)
@@ -670,7 +849,11 @@ export class Sign extends plugin {
       const fwt = await this.getStoredFwt()
       await this.reply(`${config.signTitle}开始执行，请稍候...`)
       const data = await this.runSingleCommunitySign(gameKey, fwt)
-      await this.reply(buildCommunityReply(`${config.signTitle}执行完成`, data))
+      await this.replyCommunitySignResult(config.signTitle, data, {
+        records: [buildSingleCommunityRenderRecord(`${config.name}社区`, data)],
+        subtitle: `${config.name}社区任务结果`,
+        fallbackMessages: [buildCommunityReply(`${config.signTitle}执行完成`, data)]
+      })
       return true
     } catch (error) {
       return this.replyFailure(`${config.signTitle}失败`, error)
@@ -840,6 +1023,49 @@ export class Sign extends plugin {
   async replyQueryForward (title = '', messages = []) {
     const forward = await common.makeForwardMsg(this.e, messages, title)
     await this.reply(forward)
+  }
+
+  async renderCommunitySignImage (title = '', data = {}, options = {}) {
+    return this.e.runtime.render(
+      pluginName,
+      COMMUNITY_SIGN_RENDER_PATH,
+      buildCommunitySignRenderData(title, data, options),
+      {
+        scale: COMMUNITY_SIGN_RENDER_SCALE,
+        retType: 'base64'
+      }
+    )
+  }
+
+  async replyCommunitySignResult (title = '', data = {}, options = {}) {
+    const {
+      useForward = false,
+      forwardTitle = '',
+      fallbackUseForward = false,
+      fallbackMessages = []
+    } = options
+
+    try {
+      const image = await this.renderCommunitySignImage(title, data, options)
+      if (image) {
+        if (useForward) {
+          await this.replyQueryForward(forwardTitle || `${title}结果`, [image])
+        } else {
+          await this.reply(image)
+        }
+        return true
+      }
+    } catch (error) {
+      logger.error('[TaJiDuo-plugin] 社区签到结果渲染失败', error)
+    }
+
+    if (fallbackUseForward || useForward) {
+      await this.replyQueryForward(forwardTitle || `${title}结果`, fallbackMessages)
+      return true
+    }
+
+    await this.reply(fallbackMessages[0] || buildCommunityReply(`${title}执行完成`, data))
+    return true
   }
 
   async replyFailure (title = '', error) {

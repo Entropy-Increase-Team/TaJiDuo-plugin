@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=724, initial-scale=1">
+  <title>{{pageTitle}}</title>
+  <link rel="stylesheet" href="{{_res_path}}render/menu/style.css">
+</head>
+<body>
+  <div class="menu-page">
+    <div class="page-overlay">
+      <div class="title-wrap">
+        <img class="title-bg" src="{{_res_path}}img/bg/UI_YH_Bond_MainUI_Button01_Normal.png" alt="">
+        <div class="title-text">塔吉多插件帮助</div>
+      </div>
+
+      <div class="menu-card">
+        {{each menuSections section}}
+        <section class="command-section">
+          <div class="section-title">{{section.title}}</div>
+          <div class="command-list">
+            {{each section["items"] item}}
+            <div class="command-item">
+              <div class="command-main">{{item.command}}</div>
+              <div class="command-desc">{{item.description}}</div>
+            </div>
+            {{/each}}
+          </div>
+        </section>
+        {{/each}}
+
+        <section class="notes-section">
+          <div class="section-title">{{notesTitle}}</div>
+          <div class="notes-list">
+            {{each notes item}}
+            <div class="note-item">{{item}}</div>
+            {{/each}}
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

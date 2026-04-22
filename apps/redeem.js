@@ -143,7 +143,9 @@ export class Redeem extends plugin {
       rule: [
         { reg: buildCommandReg('兑换码'), fnc: 'listAllRedeemCodes' },
         { reg: buildCommandReg('幻塔兑换码'), fnc: 'listHuantaRedeemCodes' },
-        { reg: buildCommandReg('异环兑换码'), fnc: 'listYihuanRedeemCodes' }
+        { reg: buildCommandReg('异环兑换码'), fnc: 'listYihuanRedeemCodes' },
+        { reg: buildCommandReg('兑换码', 'huanta'), fnc: 'listHuantaRedeemCodes' },
+        { reg: buildCommandReg('兑换码', 'yihuan'), fnc: 'listYihuanRedeemCodes' }
       ]
     })
 
