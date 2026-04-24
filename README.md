@@ -32,6 +32,7 @@ api_key: 'tjd-8FtI7adTkMHMjZaE'
 - 商品兑换
 - 兑换码查询
 - 每天 `00:20` 自动社区签到
+- 每天 `00:25` 自动幻塔 + 异环游戏签到
 - 自动签到结果推送到群聊 / 好友
 - `tjd更新` 插件更新命令
 
@@ -74,6 +75,12 @@ tajiduo:
     notify_list:
       friend: []
       group: []
+  auto_game_sign:
+    enabled: true
+    cron: '0 25 0 * * *'
+    notify_list:
+      friend: []
+      group: []
 ```
 
 字段说明：
@@ -89,8 +96,12 @@ tajiduo:
 - `between_communities_ms`: 一键社区签到时两个社区之间的间隔
 - `auto_sign.enabled`: 是否开启每日自动社区签到
 - `auto_sign.cron`: 自动社区签到 cron
-- `auto_sign.notify_list.friend`: 自动签到开始/完成时推送到这些 QQ 私聊
-- `auto_sign.notify_list.group`: 自动签到开始/完成时推送到这些群
+- `auto_sign.notify_list.friend`: 自动社区签到开始/完成时推送到这些 QQ 私聊
+- `auto_sign.notify_list.group`: 自动社区签到开始/完成时推送到这些群
+- `auto_game_sign.enabled`: 是否开启每日自动游戏签到
+- `auto_game_sign.cron`: 自动游戏签到 cron
+- `auto_game_sign.notify_list.friend`: 自动游戏签到开始/完成时推送到这些 QQ 私聊，留空时沿用 `auto_sign.notify_list.friend`
+- `auto_game_sign.notify_list.group`: 自动游戏签到开始/完成时推送到这些群，留空时沿用 `auto_sign.notify_list.group`
 
 说明：
 
@@ -159,6 +170,19 @@ tajiduo:
 - 社区查询会使用合并转发消息展示等级信息与任务明细
 - 仍兼容原来的 `tjd幻塔签到 / tjd异环签到 / tjd幻塔社区签到 / tjd异环社区签到 / tjd幻塔社区查询 / tjd异环社区查询`
 
+### 管理命令
+
+| 命令 | 说明 |
+| --- | --- |
+| `tjd全部社区签到` | 对全部已保存账号执行社区签到，仅群管理员 / 群主 / 主人可用 |
+| `tjd全部游戏签到` | 对全部已保存账号执行幻塔 + 异环游戏签到，仅群管理员 / 群主 / 主人可用 |
+
+说明：
+
+- 这两个命令会遍历 Redis 中已保存的全部账号，不依赖当前发命令的人是否已登录
+- 执行结果会以合并转发消息返回到当前会话
+- 群里可由群管理员 / 群主触发；私聊下仅主人可用
+
 ### 商城命令
 
 这些命令需要先完成登录：
@@ -181,16 +205,32 @@ tajiduo:
 | `tof兑换码 / ht兑换码 / 幻塔兑换码` | 查看幻塔当前可用兑换码 |
 | `tjd兑换码` | 查看当前全部可用兑换码 |
 
-## 自动社区签到
+## 自动签到
 
-插件会按 `tajiduo.auto_sign.cron` 定时遍历 Redis 中已保存的账号，并执行一键社区签到：
+插件有两个独立的每日自动任务：
+
+- `tajiduo.auto_sign.cron`：默认每天 `00:20`，执行一键社区签到
+- `tajiduo.auto_game_sign.cron`：默认每天 `00:25`，执行幻塔 + 异环游戏签到
+
+社区自动任务会遍历 Redis 中已保存的账号，并调用：
 
 - `POST /api/v1/games/community/sign/all`
 - `GET /api/v1/games/community/sign/tasks/:taskId`
 
+游戏自动任务会遍历 Redis 中已保存的账号，并分别调用幻塔、异环游戏签到接口：
+
+- `GET /api/v1/games/huanta/sign/state`
+- `GET /api/v1/games/huanta/roles`
+- `POST /api/v1/games/huanta/sign/game`
+- `GET /api/v1/games/yihuan/sign/state`
+- `GET /api/v1/games/yihuan/roles`
+- `POST /api/v1/games/yihuan/sign/game`
+
 如果当前没有已保存账号，自动任务会直接跳过，并在日志中输出提示。
 
-如果配置了通知列表，自动签到开始和完成时会推送到对应好友 / 群：
+如果配置了通知列表，自动签到开始和完成时会推送到对应好友 / 群；完成通知会使用合并转发消息展示每个账号的结果：
+
+- 自动游戏签到会优先使用绑定角色；如果该游戏存在多个角色但没有可用的绑定角色，会跳过该游戏并在完成通知中提示原因
 
 ```yaml
 tajiduo:
@@ -202,6 +242,12 @@ tajiduo:
         - '123456789'
       group:
         - '987654321'
+  auto_game_sign:
+    enabled: true
+    cron: '0 25 0 * * *'
+    notify_list:
+      friend: []
+      group: []
 ```
 
 也可以通过 `guoba.support.js` 在锅巴面板中直接配置这些项目。

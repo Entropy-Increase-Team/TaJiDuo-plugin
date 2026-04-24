@@ -34,8 +34,22 @@ tajiduo:
     cron: '0 20 0 * * *'
 
     notify_list:
-      # 自动签到开始/完成时，推送到这些 QQ 私聊
+      # 自动社区签到开始/完成时，推送到这些 QQ 私聊
       friend: []
 
-      # 自动签到开始/完成时，推送到这些群
+      # 自动社区签到开始/完成时，推送到这些群
+      group: []
+
+  auto_game_sign:
+    # 是否开启每日自动游戏签到
+    enabled: true
+
+    # 自动游戏签到执行时间，支持 5/6/7 位 cron；默认每天 00:25 执行
+    cron: '0 25 0 * * *'
+
+    notify_list:
+      # 自动游戏签到开始/完成时，推送到这些 QQ 私聊；留空时沿用 auto_sign.notify_list
+      friend: []
+
+      # 自动游戏签到开始/完成时，推送到这些群；留空时沿用 auto_sign.notify_list
       group: []

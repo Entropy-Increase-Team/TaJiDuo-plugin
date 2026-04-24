@@ -175,14 +175,14 @@ function buildSchemas () {
     },
     {
       field: 'auto_sign.cron',
-      label: '自动签到时间',
+      label: '自动社区签到时间',
       bottomHelpMessage: '支持 5/6/7 位 cron，默认每天 00:20 执行',
       component: 'EasyCron'
     },
     {
       field: 'auto_sign.notify_list.friend',
       label: '好友通知列表',
-      bottomHelpMessage: '自动签到开始/完成时，向这些 QQ 发送私聊通知',
+      bottomHelpMessage: '自动社区签到开始/完成时，向这些 QQ 发送私聊通知',
       component: 'GTags',
       componentProps: {
         placeholder: '请输入 QQ 号后回车'
@@ -191,7 +191,37 @@ function buildSchemas () {
     {
       field: 'auto_sign.notify_list.group',
       label: '群通知列表',
-      bottomHelpMessage: '自动签到开始/完成时，向这些群发送推送',
+      bottomHelpMessage: '自动社区签到开始/完成时，向这些群发送推送',
+      component: 'GSelectGroup',
+      componentProps: {
+        placeholder: '请选择要推送的群'
+      }
+    },
+    {
+      field: 'auto_game_sign.enabled',
+      label: '自动游戏签到开关',
+      bottomHelpMessage: '关闭后不再执行每日自动游戏签到任务',
+      component: 'Switch'
+    },
+    {
+      field: 'auto_game_sign.cron',
+      label: '自动游戏签到时间',
+      bottomHelpMessage: '支持 5/6/7 位 cron，默认每天 00:25 执行',
+      component: 'EasyCron'
+    },
+    {
+      field: 'auto_game_sign.notify_list.friend',
+      label: '游戏签到好友通知',
+      bottomHelpMessage: '自动游戏签到开始/完成时，向这些 QQ 发送私聊通知；留空时沿用自动社区签到好友通知',
+      component: 'GTags',
+      componentProps: {
+        placeholder: '请输入 QQ 号后回车'
+      }
+    },
+    {
+      field: 'auto_game_sign.notify_list.group',
+      label: '游戏签到群通知',
+      bottomHelpMessage: '自动游戏签到开始/完成时，向这些群发送推送；留空时沿用自动社区签到群通知',
       component: 'GSelectGroup',
       componentProps: {
         placeholder: '请选择要推送的群'
@@ -219,6 +249,7 @@ export function supportGuoba () {
       getConfigData () {
         const config = getMergedPluginConfig()
         const autoSign = isPlainObject(config.auto_sign) ? config.auto_sign : {}
+        const autoGameSign = isPlainObject(config.auto_game_sign) ? config.auto_game_sign : {}
 
         return {
           base_url: String(config.base_url || '').trim(),
@@ -233,7 +264,11 @@ export function supportGuoba () {
           'auto_sign.enabled': autoSign.enabled !== false,
           'auto_sign.cron': String(autoSign.cron || '0 20 0 * * *').trim() || '0 20 0 * * *',
           'auto_sign.notify_list.friend': normalizeStringList(autoSign.notify_list?.friend),
-          'auto_sign.notify_list.group': normalizeStringList(autoSign.notify_list?.group)
+          'auto_sign.notify_list.group': normalizeStringList(autoSign.notify_list?.group),
+          'auto_game_sign.enabled': autoGameSign.enabled !== false,
+          'auto_game_sign.cron': String(autoGameSign.cron || '0 25 0 * * *').trim() || '0 25 0 * * *',
+          'auto_game_sign.notify_list.friend': normalizeStringList(autoGameSign.notify_list?.friend),
+          'auto_game_sign.notify_list.group': normalizeStringList(autoGameSign.notify_list?.group)
         }
       },
       setConfigData (data, { Result }) {
@@ -258,6 +293,12 @@ export function supportGuoba () {
           nextTajiduo.auto_sign.notify_list = {
             friend: normalizeStringList(nextTajiduo.auto_sign.notify_list?.friend),
             group: normalizeStringList(nextTajiduo.auto_sign.notify_list?.group)
+          }
+          nextTajiduo.auto_game_sign = isPlainObject(nextTajiduo.auto_game_sign) ? nextTajiduo.auto_game_sign : {}
+          nextTajiduo.auto_game_sign.cron = String(nextTajiduo.auto_game_sign.cron || '0 25 0 * * *').trim() || '0 25 0 * * *'
+          nextTajiduo.auto_game_sign.notify_list = {
+            friend: normalizeStringList(nextTajiduo.auto_game_sign.notify_list?.friend),
+            group: normalizeStringList(nextTajiduo.auto_game_sign.notify_list?.group)
           }
 
           const ok = Config.setConfig({

@@ -1,18 +1,26 @@
 import plugin from '../../../lib/plugins/plugin.js'
 import common from '../../../lib/common/common.js'
 import TaJiDuoApi from '../model/api.js'
-import { clearUserSession, getUserSession, listUserSessions } from '../model/store.js'
+import { clearUserSession, listUserSessions } from '../model/store.js'
 import { pluginName } from '../model/path.js'
 import Config from '../utils/config.js'
 import {
   AUTH_EXPIRED_MESSAGE,
-  LOGIN_COMMAND_EXAMPLE,
   buildReloginReply,
   getErrorMessage,
   isAuthExpiredError
 } from '../utils/auth.js'
 import { joinLines, normalizeNonNegativeInt, pickFirstNonEmpty } from '../utils/common.js'
 import { buildCommandReg } from '../utils/command.js'
+import {
+  describeStoredSessionTarget,
+  normalizeNotifyList,
+  sendNotifyList
+} from '../utils/notify.js'
+import {
+  clearStoredSessionFromEvent,
+  getStoredFwtFromEvent
+} from '../utils/session.js'
 
 const DEFAULT_TASK_GID = 2
 const COMMUNITY_TASK_POLL_INTERVAL_MS = 2000
@@ -85,14 +93,6 @@ function getConfiguredDelay (key, fallback) {
   return normalizeNonNegativeInt(Config.get('tajiduo', key)) ?? fallback
 }
 
-function normalizeIdList (items = []) {
-  return [...new Set(
-    (Array.isArray(items) ? items : [])
-      .map((item) => String(item || '').trim())
-      .filter(Boolean)
-  )]
-}
-
 function normalizeCronExpression (cronExpression = '') {
   if (!cronExpression || typeof cronExpression !== 'string') {
     throw new Error('无效的 cron 表达式：输入必须是字符串')
@@ -122,10 +122,7 @@ function getAutoSignConfig () {
   return {
     enabled: config?.enabled !== false,
     cron: String(config?.cron || DEFAULT_AUTO_SIGN_CRON).trim() || DEFAULT_AUTO_SIGN_CRON,
-    notifyList: {
-      friend: normalizeIdList(config?.notify_list?.friend),
-      group: normalizeIdList(config?.notify_list?.group)
-    }
+    notifyList: normalizeNotifyList(config?.notify_list)
   }
 }
 
@@ -407,7 +404,7 @@ function buildAutoSignStartMessage (count = 0) {
 }
 
 function buildAutoSignAccountResultLines (entry = {}) {
-  const lines = [describeAutoSignTarget(entry?.item)]
+  const lines = [describeStoredSessionTarget(entry?.item)]
 
   if (!entry?.success) {
     lines.push(`结果：${entry?.errorMessage || '执行失败'}`)
@@ -423,24 +420,24 @@ function buildAutoSignAccountResultLines (entry = {}) {
   return lines
 }
 
-function buildAutoSignCompleteMessage (payload = {}) {
+function buildAutoSignCompleteMessages (payload = {}) {
   const total = Math.max(0, Number(payload?.total) || 0)
   const successCount = Math.max(0, Number(payload?.successCount) || 0)
   const results = Array.isArray(payload?.results) ? payload.results : []
-  const lines = [
+  const summary = joinLines([
     '塔吉多每日社区签到完成',
     `执行账号数：${total}`,
     `成功：${successCount}`,
     `失败：${Math.max(total - successCount, 0)}`
+  ])
+
+  return [
+    summary,
+    ...results.map((entry, index) => joinLines([
+      `${index + 1}. ${describeStoredSessionTarget(entry?.item)}`,
+      ...buildAutoSignAccountResultLines(entry).slice(1)
+    ]))
   ]
-
-  if (results.length > 0) {
-    results.forEach((entry, index) => {
-      lines.push('', `${index + 1}. ${buildAutoSignAccountResultLines(entry).join('\n')}`)
-    })
-  }
-
-  return joinLines(lines)
 }
 
 function getTaskRemaining (task = {}) {
@@ -801,24 +798,6 @@ function extractBatchCommunityTaskResult (payload = {}) {
   return isPlainObject(payload) ? payload : {}
 }
 
-function describeAutoSignTarget (item = {}) {
-  const parts = []
-
-  if (item?.session?.username) {
-    parts.push(`昵称=${item.session.username}`)
-  }
-
-  if (item?.session?.tgdUid) {
-    parts.push(`塔吉多UID=${item.session.tgdUid}`)
-  }
-
-  if (item?.userId !== undefined) {
-    parts.push(`用户=${item.userId}`)
-  }
-
-  return parts.join(' | ') || '未命名账号'
-}
-
 export class CommSign extends plugin {
   constructor () {
     super({
@@ -836,7 +815,12 @@ export class CommSign extends plugin {
         { reg: buildCommandReg('幻塔社区查询'), fnc: 'queryHuantaCommunity' },
         { reg: buildCommandReg('异环社区查询'), fnc: 'queryYihuanCommunity' },
         { reg: buildCommandReg('社区查询', 'huanta'), fnc: 'queryHuantaCommunity' },
-        { reg: buildCommandReg('社区查询', 'yihuan'), fnc: 'queryYihuanCommunity' }
+        { reg: buildCommandReg('社区查询', 'yihuan'), fnc: 'queryYihuanCommunity' },
+        {
+          reg: buildCommandReg('(?:全部社区签到|手动社区签到|管理员社区签到)'),
+          fnc: 'manualAllCommunitySign',
+          permission: 'admin'
+        }
       ]
     })
 
@@ -852,7 +836,7 @@ export class CommSign extends plugin {
 
   async signAllCommunities () {
     try {
-      const fwt = await this.getStoredFwt()
+      const fwt = await getStoredFwtFromEvent(this.e)
       await this.reply(`${ALL_COMMUNITY_META.signTitle}开始执行，请稍候...`)
       const data = await this.runAllCommunitySign(fwt)
       await this.replyCommunitySignResult(ALL_COMMUNITY_META.signTitle, data, {
@@ -876,7 +860,7 @@ export class CommSign extends plugin {
 
   async queryAllCommunities () {
     try {
-      const fwt = await this.getStoredFwt()
+      const fwt = await getStoredFwtFromEvent(this.e)
       await this.reply(`${ALL_COMMUNITY_META.queryTitle}开始执行，请稍候...`)
 
       const queryResult = await this.fetchAllCommunityQueryResults(fwt)
@@ -909,6 +893,90 @@ export class CommSign extends plugin {
     return this.executeSingleCommunityQuery('yihuan')
   }
 
+  async ensureManualSignPermission () {
+    if (this.e?.isMaster) {
+      return true
+    }
+
+    if (this.e?.isGroup && (this.e?.member?.is_owner || this.e?.member?.is_admin)) {
+      return true
+    }
+
+    await this.reply('暂无权限，只有群管理员或主人才能操作')
+    return false
+  }
+
+  async manualAllCommunitySign () {
+    if (!(await this.ensureManualSignPermission())) {
+      return true
+    }
+
+    try {
+      const sessions = await listUserSessions()
+      if (sessions.length === 0) {
+        await this.reply('当前没有已保存账号，无法执行全部社区签到')
+        return true
+      }
+
+      await this.reply(`塔吉多全部社区签到开始，共 ${sessions.length} 个账号，请稍候...`)
+      const { successCount, results } = await this.executeCommunitySignForSessions(sessions, {
+        logLabel: '手动全部社区签到'
+      })
+      await this.replyQueryForward(
+        '塔吉多全部社区签到结果',
+        buildAutoSignCompleteMessages({
+          total: sessions.length,
+          successCount,
+          results
+        })
+      )
+      return true
+    } catch (error) {
+      await this.reply(`塔吉多全部社区签到失败：${getErrorMessage(error)}`)
+      return true
+    }
+  }
+
+  async executeCommunitySignForSessions (sessions = [], options = {}) {
+    const logLabel = String(options?.logLabel || '批量社区签到').trim() || '批量社区签到'
+    let successCount = 0
+    const results = []
+
+    for (const item of Array.isArray(sessions) ? sessions : []) {
+      const targetText = describeStoredSessionTarget(item)
+
+      try {
+        const data = await this.runAllCommunitySign(item.session.fwt)
+        successCount += 1
+        results.push({ item, success: true, data })
+        logger.info(`[TaJiDuo-plugin] ${logLabel}成功：${targetText} | ${summarizeResultObject(data) || '执行完成'}`)
+      } catch (error) {
+        if (isAuthExpiredError(error)) {
+          await clearUserSession(item.selfId, item.userId)
+          results.push({
+            item,
+            success: false,
+            errorMessage: `登录失效，已清理本地会话 | ${getErrorMessage(error)}`
+          })
+          logger.warn(`[TaJiDuo-plugin] ${logLabel}登录失效，已清理本地会话：${targetText} | ${getErrorMessage(error)}`)
+          continue
+        }
+
+        results.push({
+          item,
+          success: false,
+          errorMessage: getErrorMessage(error)
+        })
+        logger.error(`[TaJiDuo-plugin] ${logLabel}失败：${targetText} | ${getErrorMessage(error)}`)
+      }
+    }
+
+    return {
+      successCount,
+      results
+    }
+  }
+
   async autoDailyCommunitySign () {
     const autoSign = getAutoSignConfig()
     if (autoSign.enabled === false) {
@@ -923,48 +991,24 @@ export class CommSign extends plugin {
     }
 
     logger.info(`[TaJiDuo-plugin] 每日 00:20 自动社区签到开始，共 ${sessions.length} 个账号`)
-    await this.sendAutoSignNotifyList(buildAutoSignStartMessage(sessions.length), autoSign.notifyList)
+    await sendNotifyList(autoSign.notifyList, buildAutoSignStartMessage(sessions.length), {
+      logLabel: '自动社区签到开始通知'
+    })
 
-    let successCount = 0
-    const results = []
+    const { successCount, results } = await this.executeCommunitySignForSessions(sessions, {
+      logLabel: '自动社区签到'
+    })
 
-    for (const item of sessions) {
-      const targetText = describeAutoSignTarget(item)
+    await sendNotifyList(autoSign.notifyList, buildAutoSignCompleteMessages({
+      total: sessions.length,
+      successCount,
+      results
+    }), {
+      useForward: true,
+      forwardTitle: '塔吉多每日社区签到完成',
+      logLabel: '自动社区签到完成通知'
+    })
 
-      try {
-        const data = await this.runAllCommunitySign(item.session.fwt)
-        successCount += 1
-        results.push({ item, success: true, data })
-        logger.info(`[TaJiDuo-plugin] 自动社区签到成功：${targetText} | ${summarizeResultObject(data) || '执行完成'}`)
-      } catch (error) {
-        if (isAuthExpiredError(error)) {
-          await clearUserSession(item.selfId, item.userId)
-          results.push({
-            item,
-            success: false,
-            errorMessage: `登录失效，已清理本地会话 | ${getErrorMessage(error)}`
-          })
-          logger.warn(`[TaJiDuo-plugin] 自动社区签到登录失效，已清理本地会话：${targetText} | ${getErrorMessage(error)}`)
-          continue
-        }
-
-        results.push({
-          item,
-          success: false,
-          errorMessage: getErrorMessage(error)
-        })
-        logger.error(`[TaJiDuo-plugin] 自动社区签到失败：${targetText} | ${getErrorMessage(error)}`)
-      }
-    }
-
-    await this.sendAutoSignNotifyList(
-      buildAutoSignCompleteMessage({
-        total: sessions.length,
-        successCount,
-        results
-      }),
-      autoSign.notifyList
-    )
     logger.info(`[TaJiDuo-plugin] 每日 00:20 自动社区签到完成：${successCount}/${sessions.length}`)
     return true
   }
@@ -973,7 +1017,7 @@ export class CommSign extends plugin {
     const { config } = this.getSingleCommunityApiMethods(gameKey)
 
     try {
-      const fwt = await this.getStoredFwt()
+      const fwt = await getStoredFwtFromEvent(this.e)
       await this.reply(`${config.signTitle}开始执行，请稍候...`)
       const data = await this.runSingleCommunitySign(gameKey, fwt)
       await this.replyCommunitySignResult(config.signTitle, data, {
@@ -991,7 +1035,7 @@ export class CommSign extends plugin {
     const { config } = this.getSingleCommunityApiMethods(gameKey)
 
     try {
-      const fwt = await this.getStoredFwt()
+      const fwt = await getStoredFwtFromEvent(this.e)
       await this.reply(`${config.queryTitle}开始执行，请稍候...`)
 
       const result = await this.fetchSingleCommunityQueryData(gameKey, fwt)
@@ -1197,68 +1241,12 @@ export class CommSign extends plugin {
 
   async replyFailure (title = '', error) {
     if (isAuthExpiredError(error)) {
-      await this.clearCurrentUserSession()
+      await clearStoredSessionFromEvent(this.e)
       await this.reply(buildReloginReply(title, getErrorMessage(error) || AUTH_EXPIRED_MESSAGE))
       return true
     }
 
     await this.reply(`${title}：${getErrorMessage(error)}`)
     return true
-  }
-
-  async sendAutoSignNotifyList (msg = '', notifyList = {}) {
-    const text = String(msg || '').trim()
-    if (!text) {
-      return
-    }
-
-    const friendIds = normalizeIdList(notifyList?.friend)
-    const groupIds = normalizeIdList(notifyList?.group)
-
-    for (const id of friendIds) {
-      try {
-        if (Bot?.pickUser) {
-          await Bot.pickUser(id).sendMsg(text)
-        } else if (Bot?.sendPrivateMsg) {
-          await Bot.sendPrivateMsg(id, text)
-        }
-      } catch (error) {
-        logger.error(`[TaJiDuo-plugin] 自动社区签到通知好友 ${id} 失败：${error?.message || error}`)
-      }
-    }
-
-    for (const id of groupIds) {
-      try {
-        if (Bot?.pickGroup) {
-          await Bot.pickGroup(id).sendMsg(text)
-        }
-      } catch (error) {
-        logger.error(`[TaJiDuo-plugin] 自动社区签到通知群 ${id} 失败：${error?.message || error}`)
-      }
-    }
-  }
-
-  getSessionIdentity () {
-    return {
-      selfId: this.e.self_id || 'bot',
-      userId: this.e.user_id
-    }
-  }
-
-  async getStoredFwt () {
-    const { selfId, userId } = this.getSessionIdentity()
-    const session = await getUserSession(selfId, userId)
-    const fwt = String(session?.fwt || '').trim()
-
-    if (!fwt) {
-      throw new Error(`请先发送 ${LOGIN_COMMAND_EXAMPLE} 完成登录`)
-    }
-
-    return fwt
-  }
-
-  async clearCurrentUserSession () {
-    const { selfId, userId } = this.getSessionIdentity()
-    await clearUserSession(selfId, userId)
   }
 }
