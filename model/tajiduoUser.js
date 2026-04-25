@@ -3,7 +3,7 @@ import TaJiDuoRequest from './tajiduoReq.js'
 const ALLOWED_ACCOUNT_KEYS = [
   'framework_token', 'fwt', 'tjd_uid', 'tgd_uid', 'username', 'nickname', 'avatar',
   'introduce', 'device_id', 'platform_id', 'platform_user_id', 'is_primary',
-  'is_active', 'bind_time', 'last_sync', 'last_refresh_at'
+  'is_active', 'bind_time', 'created_at', 'updated_at', 'last_sync', 'last_refresh_at'
 ]
 
 export const REDIS_KEY = (userId) => `TJD:USER:${userId}`
@@ -28,6 +28,8 @@ function normalizeAccount(account = {}) {
     platformId: 'platform_id',
     platformUserId: 'platform_user_id',
     isPrimary: 'is_primary',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
     lastRefreshAt: 'last_refresh_at'
   }
 
@@ -47,20 +49,29 @@ function normalizeAccount(account = {}) {
   return out
 }
 
+function getAccountKey(account = {}) {
+  const platformId = String(account.platform_id || '')
+  const platformUserId = String(account.platform_user_id || '')
+  const tgdUid = String(account.tgd_uid || '')
+  if (platformId && platformUserId && tgdUid) return `${platformId}:${platformUserId}:${tgdUid}`
+  if (tgdUid) return `tgd:${tgdUid}`
+  return `fwt:${account.framework_token}`
+}
+
 function normalizeAccounts(accounts = []) {
   const input = Array.isArray(accounts) ? accounts : [accounts]
-  const byFwt = new Map()
+  const byAccount = new Map()
   for (const item of input) {
     const acc = normalizeAccount(item)
     if (!acc || acc.is_active === false) continue
-    const old = byFwt.get(acc.framework_token)
-    byFwt.set(acc.framework_token, { ...(old || {}), ...acc })
+    const key = getAccountKey(acc)
+    const old = byAccount.get(key)
+    byAccount.set(key, { ...(old || {}), ...acc })
   }
-  const list = Array.from(byFwt.values())
-  if (list.length > 0 && !list.some((acc) => acc.is_primary)) {
-    list[0].is_primary = true
-  }
-  return list.map((acc, index) => ({ ...acc, is_primary: index === list.findIndex((a) => a.is_primary) }))
+  const list = Array.from(byAccount.values())
+  const primaryIndex = list.findIndex((acc) => acc.is_primary)
+  const activePrimaryIndex = primaryIndex >= 0 ? primaryIndex : 0
+  return list.map((acc, index) => ({ ...acc, is_primary: index === activePrimaryIndex }))
 }
 
 export async function getUserAccounts(userId) {

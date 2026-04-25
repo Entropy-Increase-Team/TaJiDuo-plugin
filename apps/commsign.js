@@ -23,6 +23,15 @@ function flattenTasks(groups = []) {
   return out
 }
 
+function batchResultLines(data = {}) {
+  const source = data.result?.batch?.items || data.result?.items || data.items || []
+  const items = Array.isArray(source) ? source : []
+  return items.map((item) => {
+    const gameName = item.gameName || GAME[item.gameCode]?.name || item.gameCode || '未知游戏'
+    return `${gameName}：${item.message || (item.success ? '完成' : '失败')}`
+  })
+}
+
 export class commsign extends plugin {
   constructor() {
     super({
@@ -31,6 +40,10 @@ export class commsign extends plugin {
       event: 'message',
       priority: 50,
       rule: [
+        {
+          reg: `^${PREFIX.tajiduo}社区(任务|签到)$`,
+          fnc: 'tajiduoCommunitySign'
+        },
         {
           reg: `^${PREFIX.huanta}社区(任务|签到)$`,
           fnc: 'huantaCommunitySign'
@@ -118,6 +131,35 @@ export class commsign extends plugin {
     return true
   }
 
+  async communitySignAll() {
+    const users = await this.getUsers()
+    if (users.length === 0) return true
+
+    const cfg = this.getCommunityConfig()
+    const lines = []
+    for (const user of users) {
+      const res = await user.tjdReq.getData('all_community_sign', {
+        gameCodes: ['huanta', 'yihuan'],
+        actionDelayMs: cfg.action_delay_ms,
+        stepDelayMs: cfg.step_delay_ms,
+        betweenCommunitiesMs: cfg.between_communities_ms
+      })
+      if (!res || Number(res.code) !== 0) {
+        lines.push(`【${user.nickname || user.tjdUid || '账号'}】塔吉多社区签到失败：${summarizeApiError(res)}`)
+        continue
+      }
+
+      const data = res.data || {}
+      lines.push(`【${user.nickname || user.tjdUid || '账号'}】已提交塔吉多社区签到：${data.taskId || ''}\n状态：${data.status || ''}`)
+
+      const final = await this.pollAllTask(user, data.taskId)
+      if (final) lines.push(final)
+    }
+
+    await this.reply(lines.join('\n'))
+    return true
+  }
+
   async pollTask(user, gameCode, taskId) {
     if (!taskId) return ''
     const game = GAME[gameCode]
@@ -148,6 +190,40 @@ export class commsign extends plugin {
       return getMessage('community.task_failed', { game: game.name, message: data.message || '失败' })
     }
     return getMessage('community.task_done', { game: game.name, message: data.message || '完成' })
+  }
+
+  async pollAllTask(user, taskId) {
+    if (!taskId) return ''
+    const cfg = this.getCommunityConfig()
+    const baseTimes = Math.max(0, Number(cfg.poll_times ?? 8))
+    const times = Math.max(0, Number(cfg.batch_poll_times ?? cfg.all_poll_times ?? baseTimes * 3))
+    const interval = Math.max(1000, Number(cfg.poll_interval_ms ?? 5000))
+
+    let latest = null
+    for (let i = 0; i < times; i++) {
+      await sleep(interval)
+      latest = await user.tjdReq.getData('all_community_task_status', { taskId })
+      if (!latest || Number(latest.code) !== 0) {
+        return `塔吉多社区签到失败：${summarizeApiError(latest)}`
+      }
+      if (latest.data?.completed) break
+    }
+
+    const data = latest?.data
+    if (!data) return ''
+    if (!data.completed) {
+      return `塔吉多社区签到仍在执行：${data.status || 'running'}\n任务 ID：${taskId}`
+    }
+    if (data.success === false || data.status === 'failed') {
+      return `塔吉多社区签到失败：${data.message || '失败'}`
+    }
+    const lines = [`塔吉多社区签到完成：${data.message || '完成'}`]
+    lines.push(...batchResultLines(data))
+    return lines.join('\n')
+  }
+
+  async tajiduoCommunitySign() {
+    return this.communitySignAll()
   }
 
   async huantaCommunitySign() {

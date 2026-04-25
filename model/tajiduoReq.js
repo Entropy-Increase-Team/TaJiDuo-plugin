@@ -1,6 +1,6 @@
 import TaJiDuoApi from './tajiduoApi.js'
 import setting from '../utils/setting.js'
-import { getPlatformId } from '../utils/common.js'
+import { getPlatformId, getPlatformUserId } from '../utils/common.js'
 
 export default class TaJiDuoRequest {
   constructor(frameworkToken = '', option = {}) {
@@ -50,7 +50,7 @@ export default class TaJiDuoRequest {
 
     if (platform) {
       headers['X-Platform-Id'] = data.platformId || getPlatformId(data.e)
-      headers['X-Platform-User-Id'] = String(data.platformUserId || '')
+      headers['X-Platform-User-Id'] = String(data.platformUserId || getPlatformUserId(data.e))
     }
 
     if (data.headers) {

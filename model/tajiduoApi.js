@@ -188,7 +188,7 @@ export default class TaJiDuoApi {
           gameCodes: data.gameCodes,
           actionDelayMs: data.actionDelayMs ?? 3000,
           stepDelayMs: data.stepDelayMs ?? 8000,
-          betweenCommunitiesMs: data.betweenCommunitiesMs ?? 3000
+          betweenCommunitiesMs: data.betweenCommunitiesMs ?? 15000
         }
       },
       all_community_task_status: {

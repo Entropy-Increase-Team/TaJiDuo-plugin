@@ -4,7 +4,7 @@ base_url: "https://tajiduo.shallow.ink"
 api_key: ""
 # 请求超时时间，单位毫秒
 timeout: 25000
-# 网页登录服务配置，发「tjd登录」时会生成此服务下的登录链接
+# 网页登录服务配置，开启后发「tjd登录」会生成此服务下的登录链接；关闭后使用「tjd登录 <手机号>」短信登录
 login_server:
   # 是否启用网页登录服务
   enabled: true
@@ -16,5 +16,6 @@ login_server:
 community_task:
   action_delay_ms: 3000
   step_delay_ms: 8000
+  between_communities_ms: 15000
   poll_times: 8
   poll_interval_ms: 5000

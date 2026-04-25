@@ -6,7 +6,6 @@ import {
   getMessage,
   getUnbindMessage,
   normalizeRole,
-  pickRole,
   PREFIX,
   summarizeApiError,
   trimMsg
@@ -29,13 +28,6 @@ function roleLabel(role = {}) {
   return role.roleName || role.name || role.roleId || role.id || '未知角色'
 }
 
-function signLine(item = {}) {
-  const role = item.role || item
-  const name = roleLabel(role)
-  const message = item.reward || item.message || item.upstream?.message || '完成'
-  return `${name}：${message}`
-}
-
 export class gamesign extends plugin {
   constructor() {
     const signConfig = setting.getConfig('sign') || {}
@@ -46,20 +38,16 @@ export class gamesign extends plugin {
       priority: 50,
       rule: [
         {
-          reg: `^${PREFIX.huanta}签到(?:\\s*\\d+)?$`,
+          reg: `^${PREFIX.tajiduo}签到$`,
+          fnc: 'tajiduoSign'
+        },
+        {
+          reg: `^${PREFIX.huanta}签到$`,
           fnc: 'huantaSign'
         },
         {
-          reg: `^${PREFIX.yihuan}签到(?:\\s*\\d+)?$`,
+          reg: `^${PREFIX.yihuan}签到$`,
           fnc: 'yihuanSign'
-        },
-        {
-          reg: `^${PREFIX.huanta}游戏签到\\s*\\d+$`,
-          fnc: 'huantaGameSign'
-        },
-        {
-          reg: `^${PREFIX.yihuan}游戏签到\\s*\\d+$`,
-          fnc: 'yihuanGameSign'
         },
         {
           reg: `^${PREFIX.huanta}签到状态$`,
@@ -108,31 +96,9 @@ export class gamesign extends plugin {
     return users
   }
 
-  async signOne(tjdUser, gameCode, roleId = '') {
+  async signOne(tjdUser, gameCode) {
     const game = GAME[gameCode]
     if (!game) return { ok: false, lines: ['未知游戏'] }
-
-    if (gameCode === 'huanta' && !roleId) {
-      const res = await tjdUser.tjdReq.getData('huanta_sign_all')
-      if (!res || Number(res.code) !== 0) {
-        return { ok: false, lines: [getMessage('game.sign_failed', { game: game.name, message: summarizeApiError(res) })] }
-      }
-      const data = res.data || {}
-      const lines = []
-      if (data.app) lines.push(`社区：${data.app.message || (data.app.success ? '完成' : '失败')}`)
-      for (const item of data.games || []) lines.push(signLine(item))
-      if (lines.length === 0) lines.push(res.message || getMessage('common.api_success'))
-      return { ok: true, lines }
-    }
-
-    if (roleId) {
-      const res = await tjdUser.tjdReq.getData('sign_game', { gameCode, roleId })
-      if (!res || Number(res.code) !== 0) {
-        return { ok: false, lines: [getMessage('game.sign_failed', { game: game.name, message: summarizeApiError(res) })] }
-      }
-      const data = res.data || {}
-      return { ok: true, lines: [data.message || data.upstream?.message || res.message || '游戏签到完成'] }
-    }
 
     const rolesRes = await tjdUser.tjdReq.getData('game_roles', { gameCode })
     if (!rolesRes || Number(rolesRes.code) !== 0) {
@@ -144,13 +110,6 @@ export class gamesign extends plugin {
     }
 
     const lines = []
-    const appRes = await tjdUser.tjdReq.getData('sign_app', { gameCode })
-    if (appRes && Number(appRes.code) === 0) {
-      lines.push(`社区：${appRes.data?.message || appRes.message || '完成'}`)
-    } else {
-      lines.push(`社区：${summarizeApiError(appRes)}`)
-    }
-
     for (const role of roles) {
       const res = await tjdUser.tjdReq.getData('sign_game', { gameCode, roleId: role.roleId })
       if (!res || Number(res.code) !== 0) {
@@ -163,7 +122,7 @@ export class gamesign extends plugin {
     return { ok: true, lines }
   }
 
-  async sign(gameCode, onlyRoleId = '') {
+  async sign(gameCode) {
     const game = GAME[gameCode]
     const users = await this.getUsers()
     if (users.length === 0) return true
@@ -172,7 +131,7 @@ export class gamesign extends plugin {
     const lines = [getMessage('game.sign_done', { game: game.name })]
     for (const user of users) {
       const title = user.nickname || user.tjdUid || '塔吉多账号'
-      const result = await this.signOne(user, gameCode, onlyRoleId)
+      const result = await this.signOne(user, gameCode)
       lines.push(`【${title}】`)
       lines.push(...result.lines)
     }
@@ -180,20 +139,32 @@ export class gamesign extends plugin {
     return true
   }
 
+  async tajiduoSign() {
+    const users = await this.getUsers()
+    if (users.length === 0) return true
+
+    await this.reply('开始执行塔吉多签到...')
+    const lines = ['塔吉多签到完成']
+    for (const user of users) {
+      const title = user.nickname || user.tjdUid || '塔吉多账号'
+      lines.push(`【${title}】`)
+      for (const gameCode of ['huanta', 'yihuan']) {
+        const game = GAME[gameCode]
+        const result = await this.signOne(user, gameCode)
+        lines.push(`【${game.name}】`)
+        lines.push(...result.lines)
+      }
+    }
+    await this.reply(lines.join('\n'))
+    return true
+  }
+
   async huantaSign() {
-    return this.sign('huanta', getRoleId(trimMsg(this.e)))
+    return this.sign('huanta')
   }
 
   async yihuanSign() {
-    return this.sign('yihuan', getRoleId(trimMsg(this.e)))
-  }
-
-  async huantaGameSign() {
-    return this.sign('huanta', getRoleId(trimMsg(this.e)))
-  }
-
-  async yihuanGameSign() {
-    return this.sign('yihuan', getRoleId(trimMsg(this.e)))
+    return this.sign('yihuan')
   }
 
   async signState(gameCode) {

@@ -31,6 +31,44 @@ function displayName(account = {}) {
   return account.nickname || account.username || account.tjd_uid || account.tgd_uid || maskToken(account.framework_token)
 }
 
+function sameAccount(a = {}, b = {}) {
+  const aPlatformId = String(a.platform_id || a.platformId || '')
+  const bPlatformId = String(b.platform_id || b.platformId || '')
+  const aPlatformUserId = String(a.platform_user_id || a.platformUserId || '')
+  const bPlatformUserId = String(b.platform_user_id || b.platformUserId || '')
+  const aTgdUid = String(a.tgd_uid || a.tgdUid || '')
+  const bTgdUid = String(b.tgd_uid || b.tgdUid || '')
+  if (aPlatformId && bPlatformId && aPlatformUserId && bPlatformUserId && aTgdUid && bTgdUid) {
+    return aPlatformId === bPlatformId && aPlatformUserId === bPlatformUserId && aTgdUid === bTgdUid
+  }
+  if (aTgdUid && bTgdUid) return aTgdUid === bTgdUid
+  return String(a.framework_token || a.fwt || '') === String(b.framework_token || b.fwt || '')
+}
+
+function createLocalAccount(data = {}, fallback = {}) {
+  const matched = fallback.matched || {}
+  return {
+    ...matched,
+    framework_token: data.fwt || data.framework_token || matched.framework_token,
+    fwt: data.fwt || data.framework_token || matched.framework_token,
+    username: data.username || matched.username,
+    nickname: data.nickname || data.username || matched.nickname || matched.username,
+    tjd_uid: data.tjdUid || data.tjd_uid || matched.tjd_uid,
+    tgd_uid: data.tgdUid || data.tgd_uid || matched.tgd_uid,
+    avatar: data.avatar || matched.avatar,
+    introduce: data.introduce || matched.introduce,
+    device_id: data.deviceId || data.device_id || matched.device_id || fallback.deviceId || '',
+    platform_id: data.platformId || data.platform_id || matched.platform_id || fallback.platformId || '',
+    platform_user_id: data.platformUserId || data.platform_user_id || matched.platform_user_id || fallback.platformUserId || '',
+    is_primary: data.isPrimary === true || data.is_primary === true || fallback.isPrimary === true,
+    bind_time: matched.bind_time || Date.now(),
+    created_at: data.createdAt || data.created_at || matched.created_at,
+    updated_at: data.updatedAt || data.updated_at || matched.updated_at,
+    last_refresh_at: data.lastRefreshAt || data.last_refresh_at || matched.last_refresh_at,
+    last_sync: Date.now()
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -79,6 +117,10 @@ export class login extends plugin {
       return true
     }
 
+    return this.sendCaptchaByPhone(phone)
+  }
+
+  async sendCaptchaByPhone(phone) {
     const req = new TaJiDuoRequest()
     const res = await req.getData('captcha_send', { phone })
     if (!res || Number(res.code) !== 0) {
@@ -97,6 +139,14 @@ export class login extends plugin {
     const phoneFromMsg = getPhone(text)
     const captcha = getCaptcha(text)
     if (!captcha) {
+      const cfg = Server.getConfig()
+      if (!cfg.enabled) {
+        if (!phoneFromMsg) {
+          await this.reply(getMessage('login.web_disabled'))
+          return true
+        }
+        return this.sendCaptchaByPhone(phoneFromMsg)
+      }
       return this.webLogin()
     }
 
@@ -131,20 +181,14 @@ export class login extends plugin {
     }
 
     const data = res.data || {}
-    const account = {
-      framework_token: data.fwt,
-      fwt: data.fwt,
-      username: data.username,
-      nickname: data.username,
-      tjd_uid: data.tjdUid,
-      tgd_uid: data.tgdUid,
-      device_id: data.deviceId || deviceId,
-      platform_id: data.platformId || getPlatformId(this.e),
-      platform_user_id: data.platformUserId || getPlatformUserId(this.e),
-      is_primary: true,
-      bind_time: Date.now()
-    }
+    const account = createLocalAccount(data, {
+      deviceId,
+      platformId: getPlatformId(this.e),
+      platformUserId: getPlatformUserId(this.e),
+      isPrimary: true
+    })
     await addOrUpdateAccount(this.e.user_id, account)
+    await this.syncBackendAccounts(account)
     await redis.del(CAPTCHA_KEY(this.e.user_id))
 
     await this.reply(getMessage('login.login_success', {
@@ -176,6 +220,7 @@ export class login extends plugin {
       if (!session) return true
       if (session.account) {
         await addOrUpdateAccount(this.e.user_id, session.account)
+        await this.syncBackendAccounts(session.account)
         Server.consume(id)
         await this.reply(getMessage('login.login_success', {
           name: displayName(session.account),
@@ -192,7 +237,7 @@ export class login extends plugin {
   }
 
   async accountList() {
-    const accounts = await getUserAccounts(this.e.user_id)
+    const accounts = await this.getSyncedAccounts()
     if (accounts.length === 0) {
       await this.reply(getMessage('login.account_empty'))
       return true
@@ -214,14 +259,21 @@ export class login extends plugin {
 
   async switchAccount() {
     const index = trimMsg(this.e).match(/(\d+)$/)?.[1]
-    const account = await switchAccount(this.e.user_id, index)
+    const accounts = await getUserAccounts(this.e.user_id)
+    const account = accounts[Number(index) - 1]
     if (!account) {
       await this.reply(getMessage('login.account_missing', { index }))
       return true
     }
 
     const req = new TaJiDuoRequest(account.framework_token)
-    await req.getData('account_primary')
+    const res = await req.getData('account_primary')
+    if (!res || Number(res.code) !== 0) {
+      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
+      return true
+    }
+    await switchAccount(this.e.user_id, index)
+    await this.syncBackendAccounts(account)
     await this.reply(getMessage('login.account_switched', { index, name: displayName(account) }))
     return true
   }
@@ -243,6 +295,8 @@ export class login extends plugin {
       return true
     }
     const removed = await removeAccount(this.e.user_id, index)
+    const nextAccounts = await getUserAccounts(this.e.user_id)
+    if (nextAccounts.length > 0) await this.syncBackendAccounts(nextAccounts.find((item) => item.is_primary) || nextAccounts[0])
     await this.reply(getMessage('login.account_removed', { index, name: displayName(removed) }))
     return true
   }
@@ -263,21 +317,53 @@ export class login extends plugin {
     }
 
     const data = res.data || {}
+    const refreshed = createLocalAccount(data, { matched: account })
     const next = accounts.map((item) => item.framework_token === account.framework_token
       ? {
           ...item,
-          framework_token: data.fwt || item.framework_token,
-          fwt: data.fwt || item.framework_token,
-          tgd_uid: data.tgdUid || item.tgd_uid,
-          device_id: data.deviceId || item.device_id,
-          platform_id: data.platformId || item.platform_id,
-          platform_user_id: data.platformUserId || item.platform_user_id,
-          last_refresh_at: data.lastRefreshAt || data.updatedAt || Date.now(),
+          ...refreshed,
           last_sync: Date.now()
         }
       : item)
     await saveUserAccounts(this.e.user_id, next)
+    await this.syncBackendAccounts(refreshed)
     await this.reply(getMessage('login.refresh_ok', { name: displayName(account) }))
     return true
+  }
+
+  async getSyncedAccounts() {
+    const accounts = await getUserAccounts(this.e.user_id)
+    const primary = accounts.find((item) => item.is_primary) || accounts[0]
+    if (!primary) return accounts
+    return this.syncBackendAccounts(primary, { silent: true })
+  }
+
+  async syncBackendAccounts(seedAccount, { silent = false } = {}) {
+    if (!seedAccount?.framework_token) return getUserAccounts(this.e.user_id)
+
+    const current = await getUserAccounts(this.e.user_id)
+    const req = new TaJiDuoRequest(seedAccount.framework_token, { log: !silent })
+    const res = await req.getData('accounts')
+    if (!res || Number(res.code) !== 0) {
+      if (!silent) logger.warn(`[TaJiDuo-plugin][多账号]同步后端账号失败：${summarizeApiError(res)}`)
+      return current
+    }
+
+    const data = res.data || {}
+    const items = Array.isArray(data.items) ? data.items : []
+    const primary = data.primary || {}
+    if (items.length === 0) return current
+
+    const next = items.map((item) => {
+      const matched = current.find((account) => sameAccount(account, item)) || {}
+      return createLocalAccount(item, {
+        matched,
+        platformId: item.platformId || data.platformId || seedAccount.platform_id,
+        platformUserId: item.platformUserId || data.platformUserId || seedAccount.platform_user_id,
+        isPrimary: sameAccount(item, primary) || String(item.fwt || '') === String(primary.fwt || '')
+      })
+    })
+
+    return saveUserAccounts(this.e.user_id, next)
   }
 }
