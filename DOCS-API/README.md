@@ -34,6 +34,7 @@
 | `POST /_internal/api-keygen/grant-admin` | 用控制台秘钥给 API Key 提权为管理员 |
 | `GET /api/v1/games` | 已接入游戏列表 |
 | `GET /api/v1/games/redeem-codes` | 兑换码列表 |
+| `GET /api/v1/redeem-codes/htnews` | 4399 兑换码上游源 |
 | `POST /api/v1/games/redeem-codes` | 新增兑换码，仅管理员 API Key |
 | `GET /api/v1/games/shop/goods` | 商城商品列表 |
 | `GET /api/v1/games/shop/goods/:goodsId` | 商城商品详情 |
@@ -42,6 +43,7 @@
 | `GET /api/v1/games/shop/coin/records/consume` | 塔塔币明细-消耗记录 |
 | `GET /api/v1/games/shop/game-roles` | 指定游戏角色列表 |
 | `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
+| `GET /api/v1/login/laohu/area-codes` | 老虎登录区号列表 |
 | `POST /api/v1/login/tajiduo/captcha/send` | 发送短信验证码 |
 | `POST /api/v1/login/tajiduo/captcha/check` | 校验短信验证码 |
 | `POST /api/v1/login/tajiduo/session` | 登录并落库，返回 `username`、`tjdUid`、`fwt`、`platformId`、`platformUserId` |
@@ -50,6 +52,13 @@
 | `GET /api/v1/login/tajiduo/accounts` | 账号列表 |
 | `POST /api/v1/login/tajiduo/accounts/primary` | 切换主账号 |
 | `DELETE /api/v1/login/tajiduo/accounts/:fwt` | 退出登录 / 删除账号 |
+| `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
+| `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
+| `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
+| `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
+| `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
+| `GET /api/v1/community/web/official-posts` | Web 官方公告列表 |
+| `GET /api/v1/community/web/posts/full` | Web 帖子详情 |
 | `POST /api/v1/games/community/sign/all` | 提交跨社区批量任务 |
 | `GET /api/v1/games/community/sign/tasks/:taskId` | 查询跨社区批量任务状态 |
 
@@ -77,6 +86,13 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /api/v1/games/yihuan/roles` | 拉取角色列表 |
+| `GET /api/v1/games/yihuan/role-home` | 角色主页 |
+| `GET /api/v1/games/yihuan/characters` | 角色详情列表 |
+| `GET /api/v1/games/yihuan/achieve-progress` | 成就进度 |
+| `GET /api/v1/games/yihuan/area-progress` | 区域探索进度 |
+| `GET /api/v1/games/yihuan/real-estate` | 房产数据 |
+| `GET /api/v1/games/yihuan/vehicles` | 载具数据 |
+| `GET /api/v1/games/yihuan/team` | 配队推荐 |
 | `GET /api/v1/games/yihuan/sign/state` | 游戏签到状态 |
 | `GET /api/v1/games/yihuan/sign/rewards` | 游戏签到奖励表 |
 | `GET /api/v1/games/yihuan/sign/resign-info` | 游戏补签信息 |

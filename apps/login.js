@@ -1,356 +1,283 @@
-import { randomBytes } from 'node:crypto'
-import plugin from '../../../lib/plugins/plugin.js'
-import TaJiDuoApi from '../model/api.js'
-import { clearUserSession, getUserSession, saveUserSession } from '../model/store.js'
-import Config from '../utils/config.js'
+import TaJiDuoRequest from '../model/tajiduoReq.js'
+import Server from '../components/Server.js'
 import {
-  AUTH_EXPIRED_MESSAGE,
-  LOGIN_COMMAND_EXAMPLE,
-  buildReloginReply,
-  getErrorMessage,
-  isAuthExpiredError
-} from '../utils/auth.js'
-import { joinLines, normalizePositiveInt } from '../utils/common.js'
-import { buildCommandReg, extractCommandArgs, formatCommand } from '../utils/command.js'
+  addOrUpdateAccount,
+  CAPTCHA_KEY,
+  getUserAccounts,
+  removeAccount,
+  saveUserAccounts,
+  switchAccount
+} from '../model/tajiduoUser.js'
+import {
+  getMessage,
+  getPlatformId,
+  getPlatformUserId,
+  maskToken,
+  PREFIX,
+  summarizeApiError,
+  trimMsg
+} from '../utils/common.js'
 
-const DEFAULT_CAPTCHA_WAIT_TIMEOUT_MS = 300000
-const CAPTCHA_MESSAGE_REG = '^\\d{6}$'
-const PENDING_LOGIN_MAP = new Map()
-
-const NO_SESSION_REPLY = `当前还没有已登录账号，请先发送 ${LOGIN_COMMAND_EXAMPLE}`
-
-function maskPhone (phone = '') {
-  const text = String(phone || '').trim()
-  if (!text) return '未填写'
-  if (text.length < 7) return text
-  return `${text.slice(0, 3)}****${text.slice(-4)}`
+function getPhone(text = '') {
+  return String(text).match(/1\d{10}/)?.[0] || ''
 }
 
-function isValidPhone (phone = '') {
-  return /^1\d{10}$/.test(String(phone || '').trim())
+function getCaptcha(text = '') {
+  const withoutPhone = String(text).replace(/1\d{10}/g, '')
+  return withoutPhone.match(/\b\d{4,8}\b/)?.[0] || ''
 }
 
-function isValidCaptcha (captcha = '') {
-  return /^\d{6}$/.test(String(captcha || '').trim())
+function displayName(account = {}) {
+  return account.nickname || account.username || account.tjd_uid || account.tgd_uid || maskToken(account.framework_token)
 }
 
-function isSafeHeaderToken (value = '') {
-  return /^[A-Za-z0-9._:-]+$/.test(String(value || '').trim())
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function parseLoginArgs (message = '') {
-  const args = extractCommandArgs(message, '登(?:录|陆)')
-  if (!args) {
-    return {
-      phone: '',
-      hasExtraArgs: false
-    }
-  }
-
-  const parts = args.split(/\s+/).filter(Boolean)
-  return {
-    phone: String(parts[0] || '').trim(),
-    hasExtraArgs: parts.length > 1
-  }
-}
-
-function buildLoginReply (session = {}) {
-  return joinLines([
-    '塔吉多登录成功',
-    `昵称：${session.username || '未返回'}`,
-    `塔吉多UID：${session.tgdUid || '未返回'}`,
-    '',
-    `后续可直接使用 ${formatCommand('社区签到')}、${formatCommand('社区签到', 'huanta')}、${formatCommand('社区签到', 'yihuan')}`
-  ])
-}
-
-function buildSessionReply (title = '', session = {}, extraLines = []) {
-  return joinLines([
-    title,
-    ...extraLines,
-    `昵称：${session.username || '未返回'}`,
-    `塔吉多UID：${session.tgdUid || '未返回'}`
-  ])
-}
-
-export class Login extends plugin {
-  constructor () {
+export class login extends plugin {
+  constructor() {
     super({
-      name: '[TaJiDuo-plugin] 登录与会话',
-      dsc: 'TaJiDuo 登录与本地会话管理',
+      name: '[TaJiDuo-plugin]登录',
+      dsc: '塔吉多账号登录管理',
       event: 'message',
-      priority: 110,
+      priority: 50,
       rule: [
-        { reg: buildCommandReg('登(?:录|陆)(?:\\s+.+)?'), fnc: 'login' },
-        { reg: buildCommandReg('(?:刷新登录|刷新会话|刷新)'), fnc: 'refreshSession' },
-        { reg: buildCommandReg('(?:账号|会话|状态)'), fnc: 'showSession' },
-        { reg: buildCommandReg('(?:退出登录|退登|登出|退出)'), fnc: 'logout' },
-        { reg: buildCommandReg('删除账号'), fnc: 'deleteAccount' },
-        { reg: CAPTCHA_MESSAGE_REG, fnc: 'consumeCaptcha' }
+        {
+          reg: `^${PREFIX.tajiduo}(验证码|发送验证码|手机登录|手机绑定)(?:\\s+.*)?$`,
+          fnc: 'sendCaptcha'
+        },
+        {
+          reg: `^${PREFIX.tajiduo}(登录|登陆|绑定)(?:\\s+.*)?$`,
+          fnc: 'login'
+        },
+        {
+          reg: `^${PREFIX.tajiduo}(账号|登录|登陆|绑定)列表$`,
+          fnc: 'accountList'
+        },
+        {
+          reg: `^${PREFIX.tajiduo}切换(账号|登录|登陆|绑定)\\s*(\\d+)$`,
+          fnc: 'switchAccount'
+        },
+        {
+          reg: `^${PREFIX.tajiduo}删除(账号|登录|登陆|绑定)\\s*(\\d+)$`,
+          fnc: 'deleteAccount'
+        },
+        {
+          reg: `^${PREFIX.tajiduo}刷新(?:账号|登录|登陆|绑定)?$`,
+          fnc: 'refreshAccount'
+        }
       ]
     })
-
-    this.api = new TaJiDuoApi()
   }
 
-  async login () {
-    if (!(await this.ensurePrivateChat(true))) {
+  async sendCaptcha() {
+    const text = trimMsg(this.e)
+    const phone = getPhone(text)
+    if (!phone) {
+      await this.reply(getMessage('login.captcha_usage'))
       return true
     }
 
-    const { phone, hasExtraArgs } = parseLoginArgs(this.e.msg)
-    if (!isValidPhone(phone) || hasExtraArgs) {
-      await this.reply(`格式：${LOGIN_COMMAND_EXAMPLE}`)
+    const req = new TaJiDuoRequest()
+    const res = await req.getData('captcha_send', { phone })
+    if (!res || Number(res.code) !== 0) {
+      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
       return true
     }
 
+    const deviceId = res.data?.deviceId || ''
+    await redis.set(CAPTCHA_KEY(this.e.user_id), JSON.stringify({ phone, deviceId, time: Date.now() }), { EX: 600 })
+    await this.reply(getMessage('login.captcha_sent', { phone, deviceId }))
+    return true
+  }
+
+  async login() {
+    const text = trimMsg(this.e)
+    const phoneFromMsg = getPhone(text)
+    const captcha = getCaptcha(text)
+    if (!captcha) {
+      return this.webLogin()
+    }
+
+    let pending = {}
     try {
-      await this.sendCaptchaAndWait(phone)
+      const raw = await redis.get(CAPTCHA_KEY(this.e.user_id))
+      pending = raw ? JSON.parse(raw) : {}
     } catch (error) {
-      await this.reply(`塔吉多登录失败：${getErrorMessage(error)}`)
+      pending = {}
     }
 
-    return true
-  }
-
-  async consumeCaptcha () {
-    if (this.e.isGroup) {
-      return false
+    const phone = phoneFromMsg || pending.phone
+    const deviceId = pending.deviceId || ''
+    if (!phone) {
+      await this.reply(getMessage('login.pending_missing'))
+      return true
     }
 
-    const pendingLogin = this.getPendingLogin()
-    if (!pendingLogin) {
-      return false
-    }
-
-    const captcha = String(this.e.msg || '').trim()
-    if (!isValidCaptcha(captcha)) {
-      return false
-    }
-
-    await this.loginWithCaptcha(pendingLogin.phone, captcha, pendingLogin.deviceId)
-    return true
-  }
-
-  async showSession () {
-    try {
-      const session = await this.getCurrentSession()
-      if (!session?.fwt) {
-        await this.reply(NO_SESSION_REPLY)
-        return true
-      }
-
-      await this.reply(buildSessionReply('当前塔吉多账号', session))
-    } catch (error) {
-      await this.reply(`查询账号失败：${getErrorMessage(error)}`)
-    }
-
-    return true
-  }
-
-  async refreshSession () {
-    try {
-      const currentSession = await this.requireCurrentSession()
-      const nextData = await this.api.refreshSession({ fwt: currentSession.fwt })
-      const { selfId, userId } = this.getSessionIdentity()
-      const nextSession = await saveUserSession(selfId, userId, {
-        username: currentSession.username,
-        tgdUid: nextData?.tgdUid || currentSession.tgdUid,
-        fwt: nextData?.fwt || currentSession.fwt
-      })
-
-      await this.reply(buildSessionReply('塔吉多登录刷新完成', nextSession, [
-        `结果：${nextData?.success === false ? '失败' : '成功'} | ${nextData?.message || '刷新完成'}`
-      ]))
-    } catch (error) {
-      if (isAuthExpiredError(error)) {
-        return this.handleAuthExpired('塔吉多登录刷新失败', error)
-      }
-
-      await this.reply(`塔吉多登录刷新失败：${getErrorMessage(error)}`)
-    }
-
-    return true
-  }
-
-  async logout () {
-    try {
-      const session = await this.getCurrentSession()
-      if (!session?.fwt) {
-        await this.reply('当前没有需要退出的登录账号')
-        return true
-      }
-
-      await this.clearCurrentUserSession()
-      await this.reply('当前塔吉多登录已退出')
-    } catch (error) {
-      await this.reply(`退出登录失败：${getErrorMessage(error)}`)
-    }
-
-    return true
-  }
-
-  async deleteAccount () {
-    try {
-      const session = await this.requireCurrentSession('当前没有可删除的登录账号')
-      const data = await this.api.deleteAccount(session.fwt)
-      await this.clearCurrentUserSession()
-
-      await this.reply(joinLines([
-        '塔吉多账号已删除',
-        `结果：${data?.message || '删除成功'}`
-      ]))
-    } catch (error) {
-      if (isAuthExpiredError(error)) {
-        return this.handleAuthExpired('删除账号失败', error)
-      }
-
-      await this.reply(`删除账号失败：${getErrorMessage(error)}`)
-    }
-
-    return true
-  }
-
-  async sendCaptchaAndWait (phone = '') {
-    const fallbackDeviceId = this.generateDeviceId()
-    const data = await this.api.sendCaptcha({
+    const req = new TaJiDuoRequest()
+    const res = await req.getData('session', {
       phone,
-      deviceId: fallbackDeviceId
-    })
-    const deviceId = String(data?.deviceId || fallbackDeviceId).trim() || fallbackDeviceId
-
-    this.savePendingLogin({
-      phone,
+      captcha,
       deviceId,
-      expiresAt: Date.now() + this.getCaptchaWaitTimeoutMs()
+      e: this.e,
+      platformId: getPlatformId(this.e),
+      platformUserId: getPlatformUserId(this.e)
     })
 
-    await this.reply(joinLines([
-      `验证码已发送到 ${maskPhone(phone)}`,
-      '请直接发送下一条 6 位验证码完成登录。'
-    ]))
-  }
-
-  async loginWithCaptcha (phone = '', captcha = '', deviceId = '') {
-    try {
-      const platformIdentity = this.getPlatformIdentity()
-      const sessionData = await this.api.createSession({
-        phone,
-        captcha,
-        deviceId: String(deviceId || '').trim() || this.generateDeviceId()
-      }, platformIdentity)
-
-      const { selfId, userId } = this.getSessionIdentity()
-      const session = await saveUserSession(selfId, userId, sessionData)
-      this.clearPendingLogin()
-
-      await this.reply(buildLoginReply(session))
-    } catch (error) {
-      await this.reply(`塔吉多登录失败：${getErrorMessage(error)}`)
-    }
-
-    return true
-  }
-
-  async ensurePrivateChat (replyHint = false) {
-    if (!this.e.isGroup) {
+    if (!res || Number(res.code) !== 0) {
+      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
       return true
     }
 
-    if (replyHint) {
-      await this.reply('塔吉多登录命令仅支持私聊使用')
+    const data = res.data || {}
+    const account = {
+      framework_token: data.fwt,
+      fwt: data.fwt,
+      username: data.username,
+      nickname: data.username,
+      tjd_uid: data.tjdUid,
+      tgd_uid: data.tgdUid,
+      device_id: data.deviceId || deviceId,
+      platform_id: data.platformId || getPlatformId(this.e),
+      platform_user_id: data.platformUserId || getPlatformUserId(this.e),
+      is_primary: true,
+      bind_time: Date.now()
     }
+    await addOrUpdateAccount(this.e.user_id, account)
+    await redis.del(CAPTCHA_KEY(this.e.user_id))
 
-    return false
-  }
-
-  async handleAuthExpired (title = '', error) {
-    await this.clearCurrentUserSession()
-    await this.reply(buildReloginReply(title, getErrorMessage(error) || AUTH_EXPIRED_MESSAGE))
+    await this.reply(getMessage('login.login_success', {
+      name: displayName(account),
+      uid: account.tjd_uid || account.tgd_uid || '未知'
+    }))
     return true
   }
 
-  getSessionIdentity () {
-    return {
-      selfId: this.e.self_id || 'bot',
-      userId: this.e.user_id
-    }
-  }
-
-  async getCurrentSession () {
-    const { selfId, userId } = this.getSessionIdentity()
-    return getUserSession(selfId, userId)
-  }
-
-  async requireCurrentSession (message = NO_SESSION_REPLY) {
-    const session = await this.getCurrentSession()
-    if (!session?.fwt) {
-      throw new Error(message)
-    }
-    return session
-  }
-
-  async clearCurrentUserSession () {
-    const { selfId, userId } = this.getSessionIdentity()
-    await clearUserSession(selfId, userId)
-    this.clearPendingLogin()
-  }
-
-  getPlatformIdentity () {
-    const clientId = String(Config.get('tajiduo', 'client_id') || '').trim()
-    const platformUserId = String(this.e.user_id || '').trim()
-
-    if (!clientId) {
-      throw new Error('缺少 client_id，无法创建塔吉多会话')
+  async webLogin() {
+    const cfg = Server.getConfig()
+    if (!cfg.enabled) {
+      await this.reply(getMessage('login.web_disabled'))
+      return true
     }
 
-    if (!isSafeHeaderToken(clientId)) {
-      throw new Error('client_id 只能使用字母、数字、点、下划线、连字符、冒号')
+    const platformId = getPlatformId(this.e)
+    const platformUserId = getPlatformUserId(this.e)
+    const { id, url } = Server.createSession(this.e, platformId, platformUserId)
+
+    await this.reply(getMessage('login.web_link', {
+      url,
+      userId: platformUserId
+    }))
+
+    const timeout = Date.now() + 10 * 60 * 1000
+    while (Date.now() < timeout) {
+      const session = Server.data[id]
+      if (!session) return true
+      if (session.account) {
+        await addOrUpdateAccount(this.e.user_id, session.account)
+        Server.consume(id)
+        await this.reply(getMessage('login.login_success', {
+          name: displayName(session.account),
+          uid: session.account.tjd_uid || session.account.tgd_uid || '未知'
+        }))
+        return true
+      }
+      await sleep(1000)
     }
 
-    if (!platformUserId) {
-      throw new Error('缺少平台用户 ID，无法创建塔吉多会话')
+    Server.consume(id)
+    await this.reply(getMessage('login.web_timeout'), true)
+    return true
+  }
+
+  async accountList() {
+    const accounts = await getUserAccounts(this.e.user_id)
+    if (accounts.length === 0) {
+      await this.reply(getMessage('login.account_empty'))
+      return true
     }
 
-    return {
-      platformId: clientId,
-      platformUserId
-    }
+    const lines = [getMessage('login.account_title')]
+    accounts.forEach((account, index) => {
+      lines.push(getMessage('login.account_line', {
+        index: index + 1,
+        mark: account.is_primary ? '当前 ' : '',
+        name: displayName(account),
+        uid: account.tjd_uid || account.tgd_uid || '未知',
+        token: maskToken(account.framework_token)
+      }))
+    })
+    await this.reply(lines.join('\n'))
+    return true
   }
 
-  getPendingKey () {
-    const { selfId, userId } = this.getSessionIdentity()
-    return `${selfId}:${String(userId || '').trim()}`
-  }
-
-  getCaptchaWaitTimeoutMs () {
-    return normalizePositiveInt(Config.get('tajiduo', 'captcha_wait_timeout_ms')) || DEFAULT_CAPTCHA_WAIT_TIMEOUT_MS
-  }
-
-  generateDeviceId () {
-    return randomBytes(16).toString('hex')
-  }
-
-  getPendingLogin () {
-    const pendingLogin = PENDING_LOGIN_MAP.get(this.getPendingKey())
-    if (!pendingLogin) {
-      return null
+  async switchAccount() {
+    const index = trimMsg(this.e).match(/(\d+)$/)?.[1]
+    const account = await switchAccount(this.e.user_id, index)
+    if (!account) {
+      await this.reply(getMessage('login.account_missing', { index }))
+      return true
     }
 
-    if (Date.now() > Number(pendingLogin.expiresAt || 0)) {
-      this.clearPendingLogin()
-      return null
+    const req = new TaJiDuoRequest(account.framework_token)
+    await req.getData('account_primary')
+    await this.reply(getMessage('login.account_switched', { index, name: displayName(account) }))
+    return true
+  }
+
+  async deleteAccount() {
+    const index = trimMsg(this.e).match(/(\d+)$/)?.[1]
+    const accounts = await getUserAccounts(this.e.user_id)
+    const account = accounts[Number(index) - 1]
+    if (!account) {
+      await this.reply(getMessage('login.account_missing', { index }))
+      return true
     }
 
-    return pendingLogin
+    const req = new TaJiDuoRequest(account.framework_token)
+    const res = await req.getData('account_delete', { fwt: account.framework_token })
+    const code = Number(res?.code)
+    if (res && code !== 0 && code !== 401) {
+      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
+      return true
+    }
+    const removed = await removeAccount(this.e.user_id, index)
+    await this.reply(getMessage('login.account_removed', { index, name: displayName(removed) }))
+    return true
   }
 
-  savePendingLogin (payload = {}) {
-    PENDING_LOGIN_MAP.set(this.getPendingKey(), payload)
-    return payload
-  }
+  async refreshAccount() {
+    const accounts = await getUserAccounts(this.e.user_id)
+    const account = accounts.find((item) => item.is_primary) || accounts[0]
+    if (!account) {
+      await this.reply(getMessage('login.account_empty'))
+      return true
+    }
 
-  clearPendingLogin () {
-    PENDING_LOGIN_MAP.delete(this.getPendingKey())
+    const req = new TaJiDuoRequest(account.framework_token)
+    const res = await req.getData('refresh')
+    if (!res || Number(res.code) !== 0) {
+      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
+      return true
+    }
+
+    const data = res.data || {}
+    const next = accounts.map((item) => item.framework_token === account.framework_token
+      ? {
+          ...item,
+          framework_token: data.fwt || item.framework_token,
+          fwt: data.fwt || item.framework_token,
+          tgd_uid: data.tgdUid || item.tgd_uid,
+          device_id: data.deviceId || item.device_id,
+          platform_id: data.platformId || item.platform_id,
+          platform_user_id: data.platformUserId || item.platform_user_id,
+          last_refresh_at: data.lastRefreshAt || data.updatedAt || Date.now(),
+          last_sync: Date.now()
+        }
+      : item)
+    await saveUserAccounts(this.e.user_id, next)
+    await this.reply(getMessage('login.refresh_ok', { name: displayName(account) }))
+    return true
   }
 }

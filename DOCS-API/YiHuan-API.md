@@ -67,6 +67,13 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | 接口 | 用途 | 说明 |
 | --- | --- | --- |
 | `GET /api/v1/games/yihuan/roles` | 拉取角色列表 | 返回异环角色列表 |
+| `GET /api/v1/games/yihuan/role-home` | 角色主页 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/characters` | 角色详情列表 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/achieve-progress` | 成就进度 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/area-progress` | 区域探索进度 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/real-estate` | 房产数据 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/vehicles` | 载具数据 | 需要 `roleId` |
+| `GET /api/v1/games/yihuan/team` | 配队推荐 | 账号级接口 |
 | `GET /api/v1/games/yihuan/sign/state` | 游戏签到状态 | 查询今日是否已签 |
 | `GET /api/v1/games/yihuan/sign/rewards` | 游戏签到奖励表 | 支持可选 `roleId` |
 | `GET /api/v1/games/yihuan/sign/resign-info` | 游戏补签信息 | 查询补签次数、消耗与余额 |
@@ -119,6 +126,405 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 - 当前实现直接读取异环角色列表
 - `roleId` 可直接用于 `sign/game` 与 `sign/resign`
+
+### 异环角色数据接口
+
+以下接口都需要：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+当前接口以透传上游 `data` 为主，统一返回：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {},
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/role-home`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环角色综合面板，例如头像、等级、成就总览、区域总览、角色列表简版等。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/role-home?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "roleid": "214075351008",
+      "rolename": "9_130707909",
+      "serverid": "14001",
+      "servername": "OB游戏服",
+      "avatar": "https://webstatic.tajiduo.com/bbs/pic/player_003_256.png",
+      "lev": 30,
+      "worldlevel": 2,
+      "tycoonLevel": 5,
+      "roleloginDays": 12,
+      "charidCnt": 8,
+      "achieveProgress": {
+        "achievementCnt": 36,
+        "total": 120
+      },
+      "areaProgress": [
+        {
+          "id": "area_1",
+          "name": "海特洛市",
+          "total": 72
+        }
+      ],
+      "realestate": {
+        "showId": "house_1",
+        "showName": "都市公寓",
+        "total": 4
+      },
+      "vehicle": {
+        "ownCnt": 3,
+        "showId": "vehicle_1",
+        "showName": "巡航机车",
+        "total": 12
+      },
+      "characters": [
+        {
+          "id": "player_003",
+          "name": "角色名",
+          "alev": 1,
+          "awakenLev": 0,
+          "elementType": "fire",
+          "groupType": "city",
+          "quality": "SSR",
+          "slev": 30
+        }
+      ]
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/characters`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环角色详细列表。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/characters?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": "player_003",
+        "name": "角色名",
+        "alev": 1,
+        "awakenLev": 0,
+        "awakenEffect": ["攻击提升"],
+        "elementType": "fire",
+        "groupType": "city",
+        "quality": "SSR",
+        "properties": [
+          {
+            "id": "atk",
+            "name": "攻击",
+            "value": "1200"
+          }
+        ],
+        "skills": [
+          {
+            "id": "skill_1",
+            "name": "技能名",
+            "type": "active",
+            "level": 3,
+            "items": [
+              {
+                "title": "效果",
+                "desc": "造成伤害"
+              }
+            ]
+          }
+        ],
+        "citySkills": [],
+        "fork": {
+          "id": "fork_1",
+          "alev": "1",
+          "blev": "0",
+          "slev": "30",
+          "properties": []
+        },
+        "suit": {
+          "suitActivateNum": 2
+        }
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/achieve-progress`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环成就进度。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/achieve-progress?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "achievementCnt": 36,
+      "total": 120,
+      "bronzeUmdCnt": 12,
+      "silverUmdCnt": 3,
+      "goldUmdCnt": 1,
+      "detail": [
+        {
+          "id": "achieve_city",
+          "name": "都市见闻",
+          "progress": 8,
+          "total": 20
+        }
+      ]
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/area-progress`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环区域探索进度。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/area-progress?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": "area_1",
+        "name": "海特洛市",
+        "total": 72,
+        "detail": [
+          {
+            "id": "spot_1",
+            "name": "观景点",
+            "total": 10
+          }
+        ]
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/real-estate`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环房产数据。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/real-estate?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "detail": [
+        {
+          "id": "house_1",
+          "name": "都市公寓",
+          "own": true,
+          "fdetail": [
+            {
+              "id": "furniture_1",
+              "name": "沙发",
+              "own": true
+            }
+          ]
+        }
+      ]
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/vehicles`
+
+查询参数：
+
+- `roleId`：必填
+
+用途：获取异环载具数据。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/vehicles?roleId=214075351008
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "detail": [
+        {
+          "id": "vehicle_1",
+          "name": "巡航机车",
+          "own": true
+        }
+      ],
+      "ownCnt": 3,
+      "showId": "vehicle_1",
+      "showName": "巡航机车",
+      "total": 12
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/team`
+
+用途：获取异环配队推荐列表。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/team
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": "team_1",
+        "name": "火系爆发队",
+        "icon": "https://webstatic.tajiduo.com/bbs/pic/team.png",
+        "desc": "适合快速清场",
+        "imgs": [
+          "https://webstatic.tajiduo.com/bbs/pic/player_003_256.png"
+        ]
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
 
 ### `GET /api/v1/games/yihuan/sign/state`
 

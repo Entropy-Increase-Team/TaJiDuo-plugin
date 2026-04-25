@@ -1,3 +1,7 @@
-config/config/
-.DS_Store
-apps/admin.js
+node_modules/
+data/
+config/*.yaml
+*.log
+package-lock.json
+pnpm-lock.yaml
+yarn.lock

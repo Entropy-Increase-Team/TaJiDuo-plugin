@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>塔吉多网页登录</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      position: relative;
+      overflow: hidden;
+      background: #101317;
+      color: #f5f7fb;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background-image: url("https://t.alcy.cc/fj");
+      background-size: cover;
+      background-position: center;
+      filter: blur(4px) saturate(.78) brightness(.78);
+      transform: scale(1.018);
+      pointer-events: none;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background: rgba(4, 10, 15, .78);
+      pointer-events: none;
+    }
+    /* 赛博朋克风格登录卡片 重绘配色 */
+    main {
+      width: min(438px, calc(100vw - 32px));
+      border-radius: 12px;
+      background: #121214;
+      border: 1px solid #222;
+      backdrop-filter: blur(16px);
+      padding: 32px;
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+    }
+    /* 顶部青蓝装饰条 参考原图主色 */
+    main::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto;
+      height: 4px;
+      background: linear-gradient(90deg, #36e0ff, #ff49a0);
+      pointer-events: none;
+    }
+    .head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 28px;
+    }
+    .tag {
+      margin-top: 3px;
+      border: 1px solid #36e0ff;
+      background: rgba(54, 224, 255, .12);
+      color: #36e0ff;
+      border-radius: 6px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+      white-space: nowrap;
+    }
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.2;
+      letter-spacing: 1px;
+      color: #ffffff;
+      font-weight: 900;
+    }
+    .meta {
+      margin: 0;
+      color: #b8c2cc;
+      line-height: 1.7;
+      font-size: 14px;
+    }
+    .meta b {
+      color: #36e0ff;
+      font-weight: 700;
+    }
+    form {
+      margin: 0;
+    }
+    label {
+      display: block;
+      margin: 0 0 10px;
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    label:not(:first-child) {
+      margin-top: 20px;
+    }
+    input {
+      width: 100%;
+      height: 50px;
+      border-radius: 8px;
+      border: 1px solid #33363b;
+      background: #1b1b1f;
+      color: #fff;
+      outline: none;
+      padding: 0 18px;
+      font-size: 16px;
+      transition: all .2s ease;
+    }
+    input::placeholder {
+      color: rgba(255, 255, 255, .35);
+    }
+    input:focus {
+      border-color: #36e0ff;
+      background: #232329;
+      box-shadow: 0 0 0 3px rgba(54, 224, 255, .15);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 130px;
+      gap: 12px;
+      align-items: end;
+    }
+    /* 获取验证码按钮 亮粉色调 匹配原图高亮粉 */
+    #send {
+      height: 50px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #ffffff;
+      background: linear-gradient(180deg, #ff58aa, #ff3792);
+      font-weight: 800;
+      font-size: 15px;
+      transition: all .15s ease;
+    }
+    #send:hover {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+    #send:active {
+      transform: translateY(1px);
+    }
+    #send[disabled] {
+      cursor: not-allowed;
+      opacity: .6;
+      transform: none;
+    }
+    /* 主登录按钮 原图青蓝色 */
+    .submit {
+      width: 100%;
+      height: 52px;
+      margin-top: 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #0a0a0c;
+      background: linear-gradient(180deg, #36e0ff, #21c4e8);
+      font-weight: 900;
+      font-size: 16px;
+      box-shadow: 0 12px 30px rgba(54, 224, 255, .25);
+      transition: all .15s ease;
+    }
+    .submit:hover {
+      filter: brightness(1.06);
+      transform: translateY(-1px);
+    }
+    .submit:active {
+      transform: translateY(1px);
+    }
+    .submit[disabled] {
+      cursor: not-allowed;
+      opacity: .6;
+      transform: none;
+    }
+    .tip {
+      min-height: 26px;
+      margin-top: 18px;
+      line-height: 1.6;
+      color: #b0bac5;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .tip.error { color: #ff6b6b; }
+    .tip.success { color: #36ffb3; }
+    /* 移动端适配 */
+    @media (max-width: 460px) {
+      main {
+        width: min(438px, calc(100vw - 24px));
+        padding: 28px 20px;
+      }
+      .head {
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .row {
+        grid-template-columns: 1fr;
+      }
+      #send {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="head">
+      <div>
+        <h1>塔吉多网页登录</h1>
+        <p class="meta">识别码：<b>__USER_ID__</b><br>机器人：<b>__BOT_ID__</b></p>
+      </div>
+      <span class="tag">安全登录</span>
+    </div>
+    <form>
+      <label for="phone">手机号</label>
+      <div class="row">
+        <input id="phone" autocomplete="tel" inputmode="numeric" maxlength="11" placeholder="请输入手机号">
+        <button id="send" type="button">获取验证码</button>
+      </div>
+      <label for="captcha">验证码</label>
+      <input id="captcha" autocomplete="one-time-code" inputmode="numeric" maxlength="8" placeholder="请输入短信验证码">
+      <button id="submit" class="submit" type="button">登录</button>
+      <div id="tip" class="tip"></div>
+    </form>
+  </main>
+  <script>
+    const phone = document.getElementById('phone')
+    const captcha = document.getElementById('captcha')
+    const send = document.getElementById('send')
+    const submit = document.getElementById('submit')
+    const tip = document.getElementById('tip')
+
+    function setTip(text, type = '') {
+      tip.textContent = text
+      tip.className = `tip ${type}`
+    }
+
+    function currentId() {
+      return location.pathname.split('/').filter(Boolean).pop()
+    }
+
+    function validPhone() {
+      return /^1\d{10}$/.test(phone.value.trim())
+    }
+
+    async function post(path, body) {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      return res.json()
+    }
+
+    send.addEventListener('click', async () => {
+      if (!validPhone()) return setTip('请输入正确的手机号', 'error')
+      send.disabled = true
+      setTip('正在发送验证码...')
+      try {
+        const res = await post(`/captcha/${currentId()}`, { phone: phone.value.trim() })
+        if (res.code !== 200) throw new Error(res.msg || '验证码发送失败')
+        setTip('验证码已发送，请查收短信', 'success')
+        let count = 60
+        send.textContent = `${count}s`
+        const timer = setInterval(() => {
+          count -= 1
+          send.textContent = count > 0 ? `${count}s` : '获取验证码'
+          if (count <= 0) {
+            clearInterval(timer)
+            send.disabled = false
+          }
+        }, 1000)
+      } catch (error) {
+        send.disabled = false
+        send.textContent = '获取验证码'
+        setTip(error.message || String(error), 'error')
+      }
+    })
+
+    submit.addEventListener('click', async () => {
+      if (!validPhone()) return setTip('请输入正确的手机号', 'error')
+      if (!/^\d{4,8}$/.test(captcha.value.trim())) return setTip('请输入正确的验证码', 'error')
+      submit.disabled = true
+      setTip('正在登录...')
+      try {
+        const res = await post(`/session/${currentId()}`, {
+          phone: phone.value.trim(),
+          captcha: captcha.value.trim()
+        })
+        if (res.code !== 200) throw new Error(res.msg || '登录失败')
+        setTip('登录成功，可以回到聊天窗口了', 'success')
+        send.disabled = true
+      } catch (error) {
+        submit.disabled = false
+        setTip(error.message || String(error), 'error')
+      }
+    })
+  </script>
+</body>
+</html>

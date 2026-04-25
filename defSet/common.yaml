@@ -1,0 +1,20 @@
+# TaJiDuo API 服务地址
+base_url: "https://tajiduo.shallow.ink"
+# API Key，通过 X-API-Key 请求头传递
+api_key: ""
+# 请求超时时间，单位毫秒
+timeout: 25000
+# 网页登录服务配置，发「tjd登录」时会生成此服务下的登录链接
+login_server:
+  # 是否启用网页登录服务
+  enabled: true
+  # 本地 HTTP 服务端口
+  port: 25188
+  # 对外展示给用户的登录服务地址；如果部署在公网或反代后，请改成公网地址
+  public_link: "http://127.0.0.1:25188"
+# 社区任务轮询设置
+community_task:
+  action_delay_ms: 3000
+  step_delay_ms: 8000
+  poll_times: 8
+  poll_interval_ms: 5000

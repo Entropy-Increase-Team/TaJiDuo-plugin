@@ -74,11 +74,13 @@
 | 接口 | 用途 |
 | --- | --- |
 | `POST /api/v1/login/tajiduo/captcha/send` | 发送短信验证码 |
+| `GET /api/v1/login/laohu/area-codes` | 老虎登录区号列表 |
 | `POST /api/v1/login/tajiduo/captcha/check` | 校验短信验证码 |
 | `GET /_internal/api-keygen/health` | API Key 自举健康检查 |
 | `POST /_internal/api-keygen/generate` | 用控制台秘钥生成 API Key |
 | `POST /_internal/api-keygen/grant-admin` | 用控制台秘钥给已有 API Key 提权为管理员 |
 | `GET /api/v1/games/redeem-codes` | 兑换码列表 |
+| `GET /api/v1/redeem-codes/htnews` | 4399 兑换码上游源 |
 | `POST /api/v1/games/redeem-codes` | 新增兑换码，仅管理员 API Key |
 | `GET /api/v1/games/shop/goods` | 商城商品列表 |
 | `GET /api/v1/games/shop/goods/:goodsId` | 商城商品详情 |
@@ -87,6 +89,13 @@
 | `GET /api/v1/games/shop/coin/records/consume` | 塔塔币明细-消耗记录 |
 | `GET /api/v1/games/shop/game-roles` | 指定游戏角色列表 |
 | `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
+| `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
+| `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
+| `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
+| `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
+| `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
+| `GET /api/v1/community/web/official-posts` | Web 官方公告列表 |
+| `GET /api/v1/community/web/posts/full` | Web 帖子详情 |
 | `POST /api/v1/login/tajiduo/session` | 登录并保存账号，返回 `username`、展示用 `tjdUid`、`fwt`、`platformId`、`platformUserId` |
 | `POST /api/v1/login/tajiduo/refresh` | 刷新已保存账号 |
 | `GET /api/v1/login/tajiduo/profile` | 查询当前 tjd 账号个人资料 |
@@ -1080,8 +1089,333 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET /health` | 基础健康检查 |
 | `GET /health/detailed` | 详细健康检查 |
 | `GET /api/v1/games` | 游戏列表 |
+| `GET /api/v1/login/laohu/area-codes` | 老虎登录区号列表 |
+| `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
+| `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
+| `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
+| `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
+| `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
+| `GET /api/v1/community/web/official-posts` | Web 官方公告列表 |
+| `GET /api/v1/community/web/posts/full` | Web 帖子详情 |
+| `GET /api/v1/redeem-codes/htnews` | 4399 兑换码上游源 |
 | `POST /api/v1/games/community/sign/all` | 提交跨社区批量任务 |
 | `GET /api/v1/games/community/sign/tasks/:taskId` | 查询跨社区批量任务状态 |
+
+### 新增上游透传接口
+
+说明：
+
+- 除 `GET /api/v1/login/laohu/area-codes`、`GET /api/v1/community/web/*`、`GET /api/v1/redeem-codes/htnews` 外，其余接口都需要有效 `fwt`。
+- 登录态接口默认使用请求头 `X-Framework-Token`，也兼容 `fwt` 查询参数或请求体字段。
+- 当前新增接口以透传上游 `data` 为主，统一返回 `{ data, upstream }`，后续可按前端需要再做强类型字段整理。
+
+#### `GET /api/v1/login/laohu/area-codes`
+
+用途：获取老虎登录区号列表。
+
+鉴权：只需要 `X-API-Key`，不需要 `fwt`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": 1,
+        "name": "中国大陆",
+        "code": "+86"
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `POST /api/v1/games/roles/bind`
+
+用途：设置当前塔吉多账号在指定游戏下的主绑定角色。
+
+JSON 请求体：
+
+```json
+{
+  "gameId": "1289",
+  "roleId": "214075351008"
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": true,
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/sign/reward-records`
+
+查询参数：
+
+- `gameId`：必填，例如 `1289`
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "createTime": 1776811672706,
+        "icon": "https://webstatic.tajiduo.com/bbs/pic/reward.png",
+        "name": "甲硬币",
+        "num": 10000
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `POST /api/v1/community/posts/share`
+
+JSON 请求体：
+
+```json
+{
+  "postId": "123456",
+  "platform": "wx_session"
+}
+```
+
+说明：`platform` 可选，默认 `wx_session`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": null,
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/posts/share-data`
+
+查询参数：
+
+- `postId`：必填
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "title": "帖子标题",
+      "content": "分享摘要",
+      "image": "https://webstatic.tajiduo.com/bbs/pic/share.png"
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/web/all`
+
+用途：获取 Web 侧社区与栏目列表。
+
+鉴权：只需要 `X-API-Key`，不需要 `fwt`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": 2,
+        "name": "异环",
+        "columns": [
+          {
+            "id": 10,
+            "columnName": "袋先生邮箱"
+          }
+        ]
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/web/official-posts`
+
+查询参数：
+
+- `columnId`：必填
+- `count`：可选，默认 `10`
+- `version`：可选，默认 `0`
+- `officialType`：可选
+
+鉴权：只需要 `X-API-Key`，不需要 `fwt`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "posts": [
+        {
+          "postId": 123456,
+          "communityId": 2,
+          "subject": "公告标题",
+          "createTime": 1776811672706,
+          "structuredContent": "[]",
+          "content": "公告正文摘要"
+        }
+      ],
+      "users": [
+        {
+          "uid": 10100300,
+          "nickname": "官方",
+          "avatar": "https://webstatic.tajiduo.com/bbs/pic/avatar.png"
+        }
+      ],
+      "hasMore": false,
+      "version": 1776811672706
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/web/posts/full`
+
+查询参数：
+
+- `postId`：必填
+
+鉴权：只需要 `X-API-Key`，不需要 `fwt`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "post": {
+        "postId": 123456,
+        "communityId": 2,
+        "subject": "公告标题",
+        "createTime": 1776811672706,
+        "structuredContent": "[]",
+        "content": "公告正文",
+        "images": [
+          {
+            "url": "https://webstatic.tajiduo.com/bbs/pic/notice.png"
+          }
+        ],
+        "vods": []
+      },
+      "users": []
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/redeem-codes/htnews`
+
+用途：读取 4399 异环兑换码 JS 数据源。
+
+鉴权：只需要 `X-API-Key`，不需要 `fwt`。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "raw": "var data=[{\"label\":\"NTE2026\",\"reward\":\"奖励内容\",\"is_fail\":\"0\"}];"
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 200,
+      "message": "OK"
+    }
+  }
+}
+```
+
+说明：
+
+- 当前接口返回 4399 上游原始 JS 文本，放在响应体的 `data.data.raw`。
+- 如果需要稳定兑换码数组，后续可以在后端继续增加解析逻辑。
 
 ### `GET /health`
 

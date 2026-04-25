@@ -1,0 +1,24 @@
+{
+  "name": "tajiduo-plugin",
+  "version": "0.1.0",
+  "description": "Yunzai-Bot 塔吉多 / 幻塔 / 异环插件",
+  "type": "module",
+  "module": "index.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --check index.js"
+  },
+  "dependencies": {
+    "chokidar": "^4.0.3",
+    "express": "^4.21.2",
+    "yaml": "^2.8.0"
+  },
+  "keywords": [
+    "云崽",
+    "塔吉多",
+    "幻塔",
+    "异环"
+  ],
+  "author": "TaJiDuo-plugin",
+  "license": "AGPL-3.0-only"
+}

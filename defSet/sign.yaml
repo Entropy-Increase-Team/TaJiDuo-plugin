@@ -1,0 +1,12 @@
+# 自动签到开关
+auto_sign: false
+# 默认每日 01:10 执行
+auto_sign_cron: "10 1 * * *"
+# 自动签到游戏，支持 huanta / yihuan
+games:
+  - huanta
+  - yihuan
+# 自动签到后通知列表
+notify_list:
+  friend: []
+  group: []
