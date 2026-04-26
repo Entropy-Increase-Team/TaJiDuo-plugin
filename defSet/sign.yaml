@@ -1,7 +1,7 @@
 # 自动签到开关
 auto_sign: true
-# 默认每日 01:10 执行
-auto_sign_cron: "10 1 * * *"
+# 默认每日 00:30 执行
+auto_sign_cron: "30 0 * * *"
 # 自动签到游戏，支持 huanta / yihuan
 games:
   - huanta

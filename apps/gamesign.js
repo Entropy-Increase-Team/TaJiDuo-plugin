@@ -2,6 +2,7 @@ import TaJiDuoUser from '../model/tajiduoUser.js'
 import setting from '../utils/setting.js'
 import { normalizeCronExpression } from '../utils/cron.js'
 import { withSignLock } from '../utils/signLock.js'
+import { runAllCommunitySignTask } from '../utils/communitySign.js'
 import {
   GAME,
   getMessage,
@@ -67,6 +68,11 @@ export class gamesign extends plugin {
           fnc: 'yihuanResign'
         },
         {
+          reg: `^${PREFIX.tajiduo}全部签到$`,
+          fnc: 'tajiduoSignTask',
+          permission: 'master'
+        },
+        {
           reg: `^${PREFIX.huanta}全部签到$`,
           fnc: 'huantaSignTask',
           permission: 'master'
@@ -81,7 +87,7 @@ export class gamesign extends plugin {
 
     this.setting = signConfig
     this.task = {
-      cron: getTaskCron(this.setting.auto_sign_cron, '10 1 * * *', '塔吉多自动签到'),
+      cron: getTaskCron(this.setting.auto_sign_cron, '30 0 * * *', '塔吉多自动签到'),
       name: 'TaJiDuo-plugin 自动签到',
       fnc: () => this.autoSignTask()
     }
@@ -274,6 +280,30 @@ export class gamesign extends plugin {
 
   async yihuanSignTask() {
     return this.signTask('yihuan')
+  }
+
+  async tajiduoSignTask() {
+    if (!this.e?.isMaster) return false
+    return withSignLock(this, '塔吉多全部签到', async () => {
+      await this.reply('开始执行塔吉多全部签到...')
+
+      const detailLines = []
+      const lines = ['塔吉多全部签到完成']
+      for (const gameCode of ['huanta', 'yihuan']) {
+        const stats = await this.runSignTask(gameCode, true)
+        lines.push(`${GAME[gameCode].name}游戏签到：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
+        detailLines.push(...stats.lines.map((line) => `${GAME[gameCode].name}游戏：${line}`))
+      }
+
+      const communityStats = await runAllCommunitySignTask(true)
+      lines.push(`社区签到：账号 ${communityStats.total}，成功 ${communityStats.success}，失败 ${communityStats.fail}`)
+      detailLines.push(...communityStats.lines.map((line) => `社区：${line}`))
+
+      lines.push(...detailLines.slice(0, 30))
+      if (detailLines.length > 30) lines.push(`还有 ${detailLines.length - 30} 条结果未展开`)
+      await this.reply(lines.join('\n'))
+      return true
+    })
   }
 
   async autoSignTask() {

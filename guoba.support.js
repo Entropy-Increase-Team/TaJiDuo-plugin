@@ -106,7 +106,7 @@ function normalizeCommon(common = {}) {
 function normalizeSign(sign = {}) {
   const merged = deepMerge({
     auto_sign: true,
-    auto_sign_cron: '10 1 * * *',
+    auto_sign_cron: '30 0 * * *',
     games: ['huanta', 'yihuan'],
     notify_list: {
       friend: [],
