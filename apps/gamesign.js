@@ -287,21 +287,29 @@ export class gamesign extends plugin {
     return withSignLock(this, '塔吉多全部签到', async () => {
       await this.reply('开始执行塔吉多全部签到...')
 
-      const detailLines = []
-      const lines = ['塔吉多全部签到完成']
+      const gameDetailLines = []
+      const gameLines = ['塔吉多全部签到：游戏签到完成']
       for (const gameCode of ['huanta', 'yihuan']) {
         const stats = await this.runSignTask(gameCode, true)
-        lines.push(`${GAME[gameCode].name}游戏签到：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
-        detailLines.push(...stats.lines.map((line) => `${GAME[gameCode].name}游戏：${line}`))
+        gameLines.push(`${GAME[gameCode].name}游戏签到：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
+        gameDetailLines.push(...stats.lines.map((line) => `${GAME[gameCode].name}游戏：${line}`))
       }
 
-      const communityStats = await runAllCommunitySignTask(true)
-      lines.push(`社区签到：账号 ${communityStats.total}，成功 ${communityStats.success}，失败 ${communityStats.fail}`)
-      detailLines.push(...communityStats.lines.map((line) => `社区：${line}`))
+      gameLines.push(...gameDetailLines.slice(0, 30))
+      if (gameDetailLines.length > 30) gameLines.push(`还有 ${gameDetailLines.length - 30} 条游戏结果未展开`)
+      await this.reply(gameLines.join('\n'))
 
-      lines.push(...detailLines.slice(0, 30))
-      if (detailLines.length > 30) lines.push(`还有 ${detailLines.length - 30} 条结果未展开`)
-      await this.reply(lines.join('\n'))
+      await this.reply('游戏签到已完成，开始执行社区签到，请等待任务完成...')
+      const communityStats = await runAllCommunitySignTask(true, { waitUntilDone: true })
+      const communityDetailLines = communityStats.lines.map((line) => `社区：${line}`)
+      const communityLines = [
+        communityStats.fail > 0 ? '塔吉多全部签到：社区签到结果' : '塔吉多全部签到：社区签到完成',
+        `社区签到：账号 ${communityStats.total}，成功 ${communityStats.success}，失败 ${communityStats.fail}`,
+        ...communityDetailLines.slice(0, 30)
+      ]
+
+      if (communityDetailLines.length > 30) communityLines.push(`还有 ${communityDetailLines.length - 30} 条社区结果未展开`)
+      await this.reply(communityLines.join('\n'))
       return true
     })
   }

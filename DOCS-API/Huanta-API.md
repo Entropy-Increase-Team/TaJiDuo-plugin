@@ -66,6 +66,9 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | 接口 | 用途 | 说明 |
 | --- | --- | --- |
 | `GET /api/v1/games/huanta/roles` | 拉取角色列表 | 读绑定角色 + 角色列表 |
+| `GET /api/v1/games/huanta/record-card` | 游戏战绩卡 | 返回当前账号名下游戏战绩卡/角色名片 |
+| `GET /api/v1/games/huanta/role-record` | 角色详细面板 / 档案数据 | 支持 `type=0/1/2/3/4` |
+| `POST /api/v1/games/huanta/role-record/display` | 设置档案展示项 | 写入武器、拟态、时装、载具展示配置 |
 | `GET /api/v1/games/huanta/sign/state` | 游戏签到状态 | 查询今日是否已签 |
 | `GET /api/v1/games/huanta/sign/rewards` | 游戏签到奖励表 | 支持可选 `roleId` |
 | `GET /api/v1/games/huanta/sign/resign-info` | 游戏补签信息 | 查询补签次数、消耗与余额 |
@@ -143,6 +146,160 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 }
 ```
 
+### `GET /api/v1/games/huanta/record-card`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+作用：
+
+- 查询当前账号名下游戏战绩卡 / 角色名片总览
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "uid": "10193432",
+    "cards": [
+      {
+        "gameId": 1256,
+        "gameName": "幻塔",
+        "bindRoleInfo": {
+          "roleId": 62719407578902,
+          "roleName": "Aster",
+          "lev": 44,
+          "serverId": 14603,
+          "serverName": "重塑未来"
+        }
+      }
+    ]
+  }
+}
+```
+
+### `GET /api/v1/games/huanta/role-record`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+查询参数：
+
+- `roleId`：必填，幻塔角色 ID
+- `type`：可选，默认 `0`
+
+`type` 含义：
+
+| type | 作用 | 主要字段 |
+| --- | --- | --- |
+| `0` | 角色详细面板总览 | `roleid`、`rolename`、`lev`、`groupname`、`maxgs`、`weaponinfo`、`imitationlist`、`dressfashionlist`、`mountlist` |
+| `1` | 武器展示池 | `weaponinfo`、`selected` |
+| `2` | 拟态展示池 | `imitationlist`、`selected` |
+| `3` | 时装展示池 | `dressfashionlist`、`selected` |
+| `4` | 载具展示池 | `mountlist`、`selected` |
+
+作用：
+
+- 查询单个幻塔角色的详细面板 / 档案数据
+- `type=0` 是角色面板总览，包含等级、GS、武器、拟态、时装、载具等首页展示数据
+- `type=1/2/3/4` 是各类展示池，用于查看或设置档案展示项
+- `type=1/2/3/4` 返回的 `selected` 是逗号分隔的当前展示项 ID
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "gameId": "1256",
+    "roleId": "62719407578902",
+    "type": "4",
+    "selected": "Mount13,Mount1",
+    "record": {
+      "mountlist": [
+        {
+          "name": "隼鸟",
+          "ID": "Mount1"
+        },
+        {
+          "name": 2613,
+          "ID": "Mount13"
+        }
+      ],
+      "selected": "Mount13,Mount1"
+    }
+  }
+}
+```
+
+### `POST /api/v1/games/huanta/role-record/display`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+Content-Type: application/json
+```
+
+请求体：
+
+```json
+{
+  "roleId": "62719407578902",
+  "type": "4",
+  "value": "Mount13,Mount1"
+}
+```
+
+也可以用数组形式提交：
+
+```json
+{
+  "roleId": "62719407578902",
+  "type": "1",
+  "values": ["3852", "3851", "1464"]
+}
+```
+
+参数说明：
+
+- `roleId`：必填，幻塔角色 ID
+- `type`：必填，只支持 `1/2/3/4`
+- `value`：展示项 ID，多个用英文逗号拼接
+- `values`：可选数组形式；当 `value` 为空时，后端会自动拼成逗号分隔字符串
+
+作用：
+
+- 设置幻塔角色档案展示项
+- 成功时返回“设置幻塔档案展示项成功”
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "设置幻塔档案展示项成功",
+  "data": {
+    "gameId": "1256",
+    "roleId": "62719407578902",
+    "type": "4",
+    "value": "Mount13,Mount1"
+  }
+}
+```
+
 ### `GET /api/v1/games/huanta/sign/state`
 
 请求头：
@@ -196,7 +353,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 作用：
 
 - 查询幻塔游戏签到奖励表
-- 抓包里该接口支持附带 `roleId`
+- 支持带 `roleId` 查询指定角色对应的奖励表
 
 响应示例：
 

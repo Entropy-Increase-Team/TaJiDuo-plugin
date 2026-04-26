@@ -671,7 +671,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 - 同时都要求有效 `fwt`
 - 本文档默认统一通过请求头 `X-Framework-Token` 传递 `fwt`
 - 商城接口当前直接走 TaJiDuo 公共层，不归 `huanta` / `yihuan` 子路由管理
-- `gameId` 由调用方显式指定；当前抓包里幻塔使用的是 `1256`
+- `gameId` 由调用方显式指定；幻塔固定使用 `1256`
 
 ### `GET /api/v1/games/shop/goods`
 
@@ -705,8 +705,8 @@ GET /api/v1/games/shop/goods?version=0&count=20&tab=all
       {
         "id": 10,
         "name": "金币*1000",
-        "cover": "https://serverlist-hotta.wmupd.com/notice_test5/pic/jinbi.png",
-        "icon": "https://serverlist-hotta.wmupd.com/notice_test5/pic/jinbi.png",
+        "cover": "https://example.com/huanta/jinbi.png",
+        "icon": "https://example.com/huanta/jinbi.png",
         "price": 300,
         "exchangeNum": 1,
         "cycleLimit": 1,
@@ -744,9 +744,9 @@ GET /api/v1/games/shop/goods?version=0&count=20&tab=all
 - `stock`：当前库存，对应客户端里的 `库存:1296`、`库存:360`
 - `exchangeNum`：当前周期已兑换次数
 - `cycleLimit`：当前周期限购次数
-- `cycleType`：限购周期类型；当前抓包里 `1` 对应客户端展示的“每月限购”
-- 当前抓包里客户端左上角的 `0/1`、`1/1`，更应按 `exchangeNum / cycleLimit` 理解
-- `limit` 不是当前这版客户端角标文案的直接来源；例如抓包里 `金币*1000` 的 `limit = 0`，但客户端仍显示 `1/1`
+- `cycleType`：限购周期类型；`1` 对应客户端展示的“每月限购”
+- 客户端列表角标里的 `0/1`、`1/1`，通常按 `exchangeNum / cycleLimit` 理解
+- `limit` 不是列表角标文案的直接来源；部分商品即使 `limit = 0`，仍可能通过 `cycleLimit` 展示周期限制
 - `nextStock`、`nextTime` 可用于后续补货提示
 - `cover`、`icon` 是商品图片地址
 

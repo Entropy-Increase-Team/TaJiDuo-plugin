@@ -15,11 +15,9 @@
 - [TaJiDuo-API.md](./TaJiDuo-API.md)
   平台登录、账号管理、健康检查、游戏目录、跨社区总控。
 - [Huanta-API.md](./Huanta-API.md)
-  幻塔模块，包含游戏签到与社区任务。
+  幻塔模块，包含游戏数据、游戏签到与社区任务。
 - [YiHuan-API.md](./YiHuan-API.md)
-  异环模块，现已开放游戏签到、补签、角色列表与社区任务。
-- [HAR-API-Inventory.md](./HAR-API-Inventory.md)
-  HAR 抓包接口盘点。
+  异环模块，包含游戏数据、游戏签到、补签、角色列表与社区任务。
 
 ## 当前已实现接口
 
@@ -67,6 +65,9 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /api/v1/games/huanta/roles` | 拉取角色列表 |
+| `GET /api/v1/games/huanta/record-card` | 游戏战绩卡 / 角色名片总览 |
+| `GET /api/v1/games/huanta/role-record` | 角色详细面板 / 档案数据 |
+| `POST /api/v1/games/huanta/role-record/display` | 设置档案展示项 |
 | `GET /api/v1/games/huanta/sign/state` | 游戏签到状态 |
 | `GET /api/v1/games/huanta/sign/rewards` | 游戏签到奖励表 |
 | `GET /api/v1/games/huanta/sign/resign-info` | 游戏补签信息 |
@@ -86,8 +87,9 @@
 | 接口 | 用途 |
 | --- | --- |
 | `GET /api/v1/games/yihuan/roles` | 拉取角色列表 |
-| `GET /api/v1/games/yihuan/role-home` | 角色主页 |
-| `GET /api/v1/games/yihuan/characters` | 角色详情列表 |
+| `GET /api/v1/games/yihuan/record-card` | 游戏战绩卡 / 角色名片总览 |
+| `GET /api/v1/games/yihuan/role-home` | 角色面板总览 |
+| `GET /api/v1/games/yihuan/characters` | 角色详细面板列表 |
 | `GET /api/v1/games/yihuan/achieve-progress` | 成就进度 |
 | `GET /api/v1/games/yihuan/area-progress` | 区域探索进度 |
 | `GET /api/v1/games/yihuan/real-estate` | 房产数据 |
@@ -98,6 +100,7 @@
 | `GET /api/v1/games/yihuan/sign/resign-info` | 游戏补签信息 |
 | `POST /api/v1/games/yihuan/sign/game` | 单角色游戏签到 |
 | `POST /api/v1/games/yihuan/sign/resign` | 单角色游戏补签 |
+| `POST /api/v1/games/yihuan/sign/all` | 异环聚合签到 |
 | `POST /api/v1/games/yihuan/sign/app` | 社区签到单步 |
 | `POST /api/v1/games/yihuan/community/sign/all` | 提交异环社区 5 步任务 |
 | `GET /api/v1/games/yihuan/community/sign/tasks/:taskId` | 查询异环社区任务状态 |

@@ -42,7 +42,11 @@ export function getMessage(path, params = {}) {
 }
 
 export function getUnbindMessage() {
-  return getMessage('unbind_message')
+  const common = setting.getConfig('common') || {}
+  const webLoginEnabled = common.login_server?.enabled !== false
+  return webLoginEnabled
+    ? getMessage('unbind_web_message')
+    : getMessage('unbind_phone_message')
 }
 
 export function getPlatformId(e) {

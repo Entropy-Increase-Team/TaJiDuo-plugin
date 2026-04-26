@@ -84,7 +84,7 @@ function normalizeCommon(common = {}) {
       action_delay_ms: 3000,
       step_delay_ms: 8000,
       between_communities_ms: 15000,
-      poll_times: 8,
+      poll_times: 36,
       poll_interval_ms: 5000
     }
   }, common)
@@ -95,7 +95,7 @@ function normalizeCommon(common = {}) {
   merged.community_task.action_delay_ms = toNumber(merged.community_task.action_delay_ms, 3000)
   merged.community_task.step_delay_ms = toNumber(merged.community_task.step_delay_ms, 8000)
   merged.community_task.between_communities_ms = toNumber(merged.community_task.between_communities_ms, 15000)
-  merged.community_task.poll_times = toNumber(merged.community_task.poll_times, 8)
+  merged.community_task.poll_times = toNumber(merged.community_task.poll_times, 36)
   merged.community_task.poll_interval_ms = toNumber(merged.community_task.poll_interval_ms, 5000)
   const batchPollTimes = toOptionalNumber(merged.community_task.batch_poll_times)
   if (batchPollTimes === undefined) delete merged.community_task.batch_poll_times
@@ -137,6 +137,8 @@ function normalizeHelp(help = {}) {
 function assignMessageConfig(result, messageConfig) {
   for (const key of [
     'unbind_message',
+    'unbind_web_message',
+    'unbind_phone_message',
     'prefixTips',
     'common.loading',
     'common.query_failed',
@@ -155,6 +157,7 @@ function assignMessageConfig(result, messageConfig) {
     'game.sign_state',
     'game.already_signed',
     'game.not_signed',
+    'community.sign_wait',
     'community.task_start',
     'community.task_done',
     'community.task_running',

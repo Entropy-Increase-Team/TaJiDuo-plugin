@@ -21,8 +21,23 @@ export default class TaJiDuoApi {
     const baseUrl = this.baseUrl
     const game = data.gameCode || data.game || ''
     return {
+      health: {
+        url: `${baseUrl}/health`,
+        auth: false
+      },
+      health_detailed: {
+        url: `${baseUrl}/health/detailed`,
+        auth: false
+      },
+      api_keygen_health: {
+        url: `${baseUrl}/_internal/api-keygen/health`,
+        auth: false
+      },
       games: {
         url: `${baseUrl}/api/v1/games`
+      },
+      laohu_area_codes: {
+        url: `${baseUrl}/api/v1/login/laohu/area-codes`
       },
       captcha_send: {
         url: `${baseUrl}/api/v1/login/tajiduo/captcha/send`,
@@ -73,8 +88,47 @@ export default class TaJiDuoApi {
         url: `${baseUrl}/api/v1/games/redeem-codes`,
         query: queryString(data, ['gameCode', 'includeExpired'])
       },
+      redeem_code_create: {
+        url: `${baseUrl}/api/v1/games/redeem-codes`,
+        method: 'post',
+        body: {
+          gameCode: data.gameCode,
+          code: data.code,
+          description: data.description,
+          exchangeRewards: data.exchangeRewards,
+          expiresAt: data.expiresAt
+        }
+      },
       htnews_codes: {
         url: `${baseUrl}/api/v1/redeem-codes/htnews`
+      },
+      community_posts_share: {
+        url: `${baseUrl}/api/v1/community/posts/share`,
+        method: 'post',
+        body: {
+          postId: data.postId,
+          platform: data.platform || 'wx_session'
+        }
+      },
+      community_posts_share_data: {
+        url: `${baseUrl}/api/v1/community/posts/share-data`,
+        query: queryString({ postId: data.postId })
+      },
+      community_web_all: {
+        url: `${baseUrl}/api/v1/community/web/all`
+      },
+      community_web_official_posts: {
+        url: `${baseUrl}/api/v1/community/web/official-posts`,
+        query: queryString({
+          columnId: data.columnId,
+          count: data.count ?? 10,
+          version: data.version ?? 0,
+          officialType: data.officialType
+        })
+      },
+      community_web_post_full: {
+        url: `${baseUrl}/api/v1/community/web/posts/full`,
+        query: queryString({ postId: data.postId })
       },
       shop_goods: {
         url: `${baseUrl}/api/v1/games/shop/goods`,
@@ -127,6 +181,22 @@ export default class TaJiDuoApi {
       game_roles: {
         url: `${baseUrl}/api/v1/games/${game}/roles`
       },
+      record_card: {
+        url: `${baseUrl}/api/v1/games/${game}/record-card`
+      },
+      huanta_role_record: {
+        url: `${baseUrl}/api/v1/games/huanta/role-record`,
+        query: queryString({ roleId: data.roleId, type: data.type ?? 0 })
+      },
+      huanta_role_record_display: {
+        url: `${baseUrl}/api/v1/games/huanta/role-record/display`,
+        method: 'post',
+        body: {
+          roleId: data.roleId,
+          type: data.type,
+          ...(Array.isArray(data.values) ? { values: data.values } : { value: data.value })
+        }
+      },
       sign_state: {
         url: `${baseUrl}/api/v1/games/${game}/sign/state`
       },
@@ -147,8 +217,18 @@ export default class TaJiDuoApi {
         method: 'post',
         body: { roleId: data.roleId }
       },
+      sign_all: {
+        url: `${baseUrl}/api/v1/games/${game}/sign/all`,
+        method: 'post',
+        body: data.roles ? { roles: data.roles } : {}
+      },
       huanta_sign_all: {
         url: `${baseUrl}/api/v1/games/huanta/sign/all`,
+        method: 'post',
+        body: data.roles ? { roles: data.roles } : {}
+      },
+      yihuan_sign_all: {
+        url: `${baseUrl}/api/v1/games/yihuan/sign/all`,
         method: 'post',
         body: data.roles ? { roles: data.roles } : {}
       },
@@ -198,6 +278,9 @@ export default class TaJiDuoApi {
         url: `${baseUrl}/api/v1/games/yihuan/role-home`,
         query: queryString({ roleId: data.roleId })
       },
+      yihuan_record_card: {
+        url: `${baseUrl}/api/v1/games/yihuan/record-card`
+      },
       yihuan_characters: {
         url: `${baseUrl}/api/v1/games/yihuan/characters`,
         query: queryString({ roleId: data.roleId })
@@ -217,9 +300,6 @@ export default class TaJiDuoApi {
       yihuan_vehicles: {
         url: `${baseUrl}/api/v1/games/yihuan/vehicles`,
         query: queryString({ roleId: data.roleId })
-      },
-      yihuan_team: {
-        url: `${baseUrl}/api/v1/games/yihuan/team`
       }
     }
   }

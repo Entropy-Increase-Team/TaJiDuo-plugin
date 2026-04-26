@@ -95,6 +95,7 @@ export class commsign extends plugin {
       const users = await this.getUsers()
       if (users.length === 0) return true
 
+      await this.reply(getMessage('community.sign_wait', { game: game.name }))
       const cfg = this.getCommunityConfig()
       const lines = []
       for (const user of users) {
@@ -132,12 +133,14 @@ export class commsign extends plugin {
       const users = await this.getUsers()
       if (users.length === 0) return true
 
+      await this.reply(getMessage('community.sign_wait', { game: '塔吉多' }))
       const cfg = this.getCommunityConfig()
       const lines = []
       for (const user of users) {
         const result = await signAllCommunities(user, cfg)
         const title = `【${user.nickname || user.tjdUid || '账号'}】`
-        lines.push(...result.lines.map((line, index) => index === 0 ? `${title}${line}` : line))
+        lines.push(title)
+        lines.push(...result.lines)
       }
 
       await this.reply(lines.join('\n'))
@@ -149,7 +152,7 @@ export class commsign extends plugin {
     if (!taskId) return ''
     const game = GAME[gameCode]
     const cfg = this.getCommunityConfig()
-    const times = Math.max(0, Number(cfg.poll_times ?? 8))
+    const times = Math.max(0, Number(cfg.poll_times ?? 36))
     const interval = Math.max(1000, Number(cfg.poll_interval_ms ?? 5000))
 
     let latest = null

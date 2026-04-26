@@ -15,7 +15,7 @@
 - 参考主游戏 `gameId = 1289`
 - `communityId = 2`
 - 路由前缀：`/api/v1/games/yihuan`
-- 当前已开放游戏签到、补签、角色列表与社区层能力
+- 当前已开放游戏数据、游戏签到、补签、角色列表与社区层能力
 
 ## 响应格式
 
@@ -64,28 +64,30 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ## 已实现接口
 
-| 接口 | 用途 | 说明 |
-| --- | --- | --- |
-| `GET /api/v1/games/yihuan/roles` | 拉取角色列表 | 返回异环角色列表 |
-| `GET /api/v1/games/yihuan/role-home` | 角色主页 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/characters` | 角色详情列表 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/achieve-progress` | 成就进度 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/area-progress` | 区域探索进度 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/real-estate` | 房产数据 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/vehicles` | 载具数据 | 需要 `roleId` |
-| `GET /api/v1/games/yihuan/team` | 配队推荐 | 账号级接口 |
-| `GET /api/v1/games/yihuan/sign/state` | 游戏签到状态 | 查询今日是否已签 |
-| `GET /api/v1/games/yihuan/sign/rewards` | 游戏签到奖励表 | 支持可选 `roleId` |
-| `GET /api/v1/games/yihuan/sign/resign-info` | 游戏补签信息 | 查询补签次数、消耗与余额 |
-| `POST /api/v1/games/yihuan/sign/game` | 单角色游戏签到 | 需要 `roleId` |
-| `POST /api/v1/games/yihuan/sign/resign` | 单角色游戏补签 | 需要 `roleId` |
-| `POST /api/v1/games/yihuan/sign/app` | 社区签到单步 | 只做签到 |
-| `POST /api/v1/games/yihuan/community/sign/all` | 提交社区 5 步任务 | 不做游戏签到 |
-| `GET /api/v1/games/yihuan/community/sign/tasks/:taskId` | 查询社区任务状态 | 返回异步执行结果 |
-| `GET /api/v1/games/yihuan/community/sign/state` | 社区签到状态 | 查询是否已签到 |
-| `GET /api/v1/games/yihuan/community/tasks` | 社区任务列表 | 默认 `gid = 2` |
-| `GET /api/v1/games/yihuan/community/exp/level` | 社区等级 | 查询经验等级 |
-| `GET /api/v1/games/yihuan/community/exp/records` | 社区经验流水 | 查询经验记录 |
+| 方法 | 路径 | 请求参数 / 请求体 | 成功返回 `data` |
+| --- | --- | --- | --- |
+| `GET` | `/api/v1/games/yihuan/roles` | 无 | `gameId`、`bindRole`、`roles` |
+| `GET` | `/api/v1/games/yihuan/record-card` | 无 | `uid`、`gameId`、`cards` |
+| `GET` | `/api/v1/games/yihuan/role-home` | 无；兼容 `roleId` 但不透传 | 角色面板总览、`upstream` |
+| `GET` | `/api/v1/games/yihuan/characters` | Query：`roleId` 必填 | 角色详细面板数组、`upstream` |
+| `GET` | `/api/v1/games/yihuan/achieve-progress` | Query：`roleId` 必填 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/area-progress` | Query：`roleId` 必填 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/real-estate` | Query：`roleId` 必填 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/vehicles` | Query：`roleId` 必填 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/team` | 无 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/sign/state` | 无 | `gameId`、`day`、`days`、`month`、`reSignCnt`、`todaySign` |
+| `GET` | `/api/v1/games/yihuan/sign/rewards` | Query：`roleId` 可选 | `gameId`、`roleId`、`items` |
+| `GET` | `/api/v1/games/yihuan/sign/resign-info` | 无 | `gameId`、`coin`、`cost`、`reSignCnt`、`reSignLimit`、`todaySign` |
+| `POST` | `/api/v1/games/yihuan/sign/game` | JSON：`roleId` 必填 | `gameId`、`roleId`、`upstream` |
+| `POST` | `/api/v1/games/yihuan/sign/resign` | JSON：`roleId` 必填 | `gameId`、`roleId`、`upstream` |
+| `POST` | `/api/v1/games/yihuan/sign/all` | JSON：可空；`roles` 可选 | `deviceId`、`tgdUid`、`app`、`games` |
+| `POST` | `/api/v1/games/yihuan/sign/app` | JSON：可空 | `communityId`、`success`、`message`、`exp`、`goldCoin` |
+| `POST` | `/api/v1/games/yihuan/community/sign/all` | JSON：`actionDelayMs`、`stepDelayMs` 可选 | `taskId`、`status`、`request` |
+| `GET` | `/api/v1/games/yihuan/community/sign/tasks/:taskId` | Path：`taskId` 必填 | 任务状态和执行结果 |
+| `GET` | `/api/v1/games/yihuan/community/sign/state` | 无 | `communityId`、`signed` |
+| `GET` | `/api/v1/games/yihuan/community/tasks` | Query：`gid` 可选，默认 `2` | `communityId`、`gid`、`groups` |
+| `GET` | `/api/v1/games/yihuan/community/exp/level` | 无 | `communityId`、等级和经验字段 |
+| `GET` | `/api/v1/games/yihuan/community/exp/records` | 无 | `communityId`、`items` |
 
 ## 核心接口
 
@@ -127,7 +129,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 - 当前实现直接读取异环角色列表
 - `roleId` 可直接用于 `sign/game` 与 `sign/resign`
 
-### 异环角色数据接口
+### 游戏数据接口
 
 以下接口都需要：
 
@@ -136,7 +138,7 @@ X-API-Key: your-api-key
 X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```
 
-当前接口以透传上游 `data` 为主，统一返回：
+除 `record-card` 外，游戏数据接口会把平台返回的主体放在 `data.data`，并在 `data.upstream` 中带上调用状态：
 
 ```json
 {
@@ -154,18 +156,69 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 }
 ```
 
-#### `GET /api/v1/games/yihuan/role-home`
+参数规则：
 
-查询参数：
+- `role-home` 按当前登录态返回角色面板总览；兼容 `roleId` 参数，但后端不向上游透传
+- `characters`、`achieve-progress`、`area-progress`、`real-estate`、`vehicles` 必须传 `roleId`
+- `team` 是账号级接口，不需要 `roleId`
 
-- `roleId`：必填
+#### `GET /api/v1/games/yihuan/record-card`
 
-用途：获取异环角色综合面板，例如头像、等级、成就总览、区域总览、角色列表简版等。
+用途：查询当前账号名下异环游戏战绩卡 / 角色名片总览。
+
+查询参数：无
 
 请求示例：
 
 ```http
-GET /api/v1/games/yihuan/role-home?roleId=214075351008
+GET /api/v1/games/yihuan/record-card
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "uid": "10193432",
+    "gameId": "1289",
+    "cards": [
+      {
+        "gameId": 1289,
+        "gameName": "异环",
+        "bindRoleInfo": {
+          "account": "9_130707909",
+          "gameId": 1289,
+          "gender": 0,
+          "lev": 16,
+          "roleId": 214075351008,
+          "roleName": "清",
+          "serverId": 14001,
+          "serverName": "异环"
+        }
+      }
+    ]
+  }
+}
+```
+
+说明：
+
+- 当前接口会筛选 `gameId=1289` 的异环卡片
+
+#### `GET /api/v1/games/yihuan/role-home`
+
+查询参数：
+
+- `roleId`：兼容参数；当前后端不向上游透传，按登录态返回角色面板总览
+
+用途：获取异环角色面板总览，例如头像、等级、体力、成就总览、区域总览、角色简表、房产概览、载具概览等。
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/role-home
 ```
 
 响应示例：
@@ -231,13 +284,19 @@ GET /api/v1/games/yihuan/role-home?roleId=214075351008
 }
 ```
 
+说明：
+
+- `data.data.roleid` 是游戏角色 ID
+- `data.data.characters` 是角色简表，只包含面板首页需要的基础字段
+- 要查看单个角色的属性、技能、芯片 / 驱动、武器等详细面板，调用 `GET /api/v1/games/yihuan/characters`
+
 #### `GET /api/v1/games/yihuan/characters`
 
 查询参数：
 
-- `roleId`：必填
+- `roleId`：必填，游戏角色 ID，不是角色图鉴里的 `id`
 
-用途：获取异环角色详细列表。
+用途：获取异环角色详细面板列表。返回值是数组，每一项对应一个角色的详细面板数据。
 
 请求示例：
 
@@ -305,6 +364,12 @@ GET /api/v1/games/yihuan/characters?roleId=214075351008
   }
 }
 ```
+
+说明：
+
+- 返回的是当前游戏角色名下的角色详细面板数组
+- 每个角色对象里通常包含 `properties`、`skills`、`citySkills`、`fork`、`suit` 等面板字段
+- 如果前端只需要某一个角色的面板，可以按数组项里的 `id` 自行筛选
 
 #### `GET /api/v1/games/yihuan/achieve-progress`
 
@@ -592,7 +657,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 说明：
 
-- 这次接口按抓包支持带 `roleId`
+- 支持带 `roleId` 查询指定角色对应的奖励表
 - 不传 `roleId` 也可以正常返回奖励表
 
 ### `GET /api/v1/games/yihuan/sign/resign-info`
@@ -668,6 +733,90 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 - 当前是单角色直接签到
 - 需要显式传 `roleId`
+
+### `POST /api/v1/games/yihuan/sign/all`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+请求：
+
+```json
+{}
+```
+
+也支持显式传角色：
+
+```json
+{
+  "roles": [
+    {
+      "roleId": "214075351008",
+      "roleName": "主角",
+      "gameId": "1289"
+    }
+  ]
+}
+```
+
+它会尽量完成：
+
+1. 使用已保存 `refreshToken` 刷新账号
+2. 执行一次异环社区 `sign/app`
+3. 自动补拉异环角色
+4. 查询游戏签到状态和签到奖励表
+5. 对每个角色执行 `sign/game`
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "deviceId": "device-x",
+    "tgdUid": "10001",
+    "roles": [
+      {
+        "roleId": "214075351008",
+        "roleName": "主角",
+        "gameId": "1289"
+      }
+    ],
+    "app": {
+      "success": true,
+      "message": "社区任务签到成功，获得5经验，12金币",
+      "exp": 5,
+      "goldCoin": 12
+    },
+    "games": [
+      {
+        "role": {
+          "roleId": "214075351008",
+          "roleName": "主角",
+          "gameId": "1289"
+        },
+        "success": true,
+        "message": "获得异核*10",
+        "reward": "获得异核*10"
+      }
+    ]
+  }
+}
+```
+
+说明：
+
+- 必须显式传 `fwt`
+- 当前 `fwt` 无效、已删除或已失效时返回 `401`
+- 如果本次走的是已保存账号，刷新后的原始 token 只会回写数据库
+- `app` 是社区签到摘要
+- `games[*]` 是每个角色的游戏签到摘要
+- `reward` 会根据账号级 `sign/state.days` 和 `sign/rewards` 推算；如果上游奖励表缺失，则保留上游签到消息
 
 ### `POST /api/v1/games/yihuan/sign/resign`
 
@@ -1159,6 +1308,5 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ## 当前边界
 
-- 当前没有 `POST /api/v1/games/yihuan/sign/all`
 - `community/sign/all` 当前只会主动执行 5 个任务，不会主动补 `被点赞帖子`、`被回复`、`被收藏`
-- 不要把 HAR 里出现的 `1257` 当成异环主游戏 ID
+- 异环主游戏 ID 固定为 `1289`

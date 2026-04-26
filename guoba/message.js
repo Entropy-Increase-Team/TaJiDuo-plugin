@@ -18,9 +18,21 @@ export default function getMessageSchemas() {
     },
     {
       field: 'message.unbind_message',
-      label: '未绑定账号提示',
+      label: '未绑定账号提示（兼容）',
       component: 'InputTextArea',
       componentProps: { rows: 3 }
+    },
+    {
+      field: 'message.unbind_web_message',
+      label: '未绑定提示（网页登录）',
+      component: 'InputTextArea',
+      componentProps: { rows: 2 }
+    },
+    {
+      field: 'message.unbind_phone_message',
+      label: '未绑定提示（短信登录）',
+      component: 'InputTextArea',
+      componentProps: { rows: 2 }
     },
     {
       field: 'message.prefixTips',
@@ -126,6 +138,11 @@ export default function getMessageSchemas() {
     {
       component: 'Divider',
       label: '社区任务文案'
+    },
+    {
+      field: 'message.community.sign_wait',
+      label: '社区签到等待提示',
+      component: 'Input'
     },
     {
       field: 'message.community.task_start',

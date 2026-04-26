@@ -74,8 +74,8 @@ body {
 .command-list,
 .notes-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px 16px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px 14px;
 }
 
 .command-item,
@@ -86,7 +86,7 @@ body {
 
 .command-main {
   color: #ffffff;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.45;
 }
@@ -97,6 +97,10 @@ body {
   color: rgba(255, 255, 255, 0.76);
   font-size: 12px;
   line-height: 1.45;
+}
+
+.command-desc:empty {
+  display: none;
 }
 
 .notes-list {

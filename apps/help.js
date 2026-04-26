@@ -27,7 +27,7 @@ export class help extends plugin {
           const parts = item.split(/\s+-\s+|\s+：\s+|\s+:\s+/)
           return {
             command: parts[0] || item,
-            description: parts.slice(1).join(' - ') || '点击帮助查看可用指令'
+            description: parts.slice(1).join(' - ')
           }
         }
         return {
@@ -67,8 +67,9 @@ export class help extends plugin {
 
     for (const group of groups) {
       lines.push(`【${group.group}】`)
-      for (const item of group.list || []) {
-        lines.push(`- ${item}`)
+      const list = group.list || []
+      for (let i = 0; i < list.length; i += 3) {
+        lines.push(list.slice(i, i + 3).join(' | '))
       }
       lines.push('')
     }

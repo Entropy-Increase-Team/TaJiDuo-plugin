@@ -1,4 +1,6 @@
-unbind_message: "还没有绑定塔吉多账号，请先发送「塔吉多登录」获取网页登录链接；若已关闭网页登录，请发送「塔吉多登录 <手机号>」获取短信验证码。"
+unbind_message: "还没有绑定塔吉多账号，请先发送「塔吉多登录」获取网页登录链接"
+unbind_web_message: "还没有绑定塔吉多账号，请先发送「塔吉多登录」获取网页登录链接"
+unbind_phone_message: "还没有绑定塔吉多账号，请先私聊发送「塔吉多登录 <手机号>」"
 prefixTips: "塔吉多/tjd 管平台账号，幻塔/ht 管幻塔，异环/yh 管异环。"
 common:
   empty: "无"
@@ -18,7 +20,7 @@ login:
   web_link: "请复制登录地址到浏览器打开：\n{url}\n识别码：{userId}\n登录地址 10 分钟内有效。"
   web_timeout: "在线登录超时，请重新发送「塔吉多登录」。"
   pending_missing: "没有找到待校验手机号，请先发送「塔吉多登录 <手机号>」获取短信验证码。"
-  login_success: "登录成功：{name}\nTJD UID：{uid}\n当前账号已设为默认。"
+  login_success: "登录成功：{name}\nTJD UID：{uid}\n当前账号已设为默认。\n注意在机器人登陆后，塔吉多APP请勿登陆，若登陆机器人会失效"
   account_empty: "本地没有保存塔吉多账号。"
   account_title: "塔吉多账号列表"
   account_line: "{index}. {mark}{name} / UID {uid} / {token}"
@@ -31,8 +33,6 @@ profile:
   line: "{label}：{text}"
 game:
   roles_empty: "没有获取到{game}角色。"
-  roles_title: "{game}角色列表"
-  role_line: "{index}. {name} / UID {roleId}{server}{level}"
   sign_start: "开始执行{game}签到..."
   sign_done: "{game}签到完成"
   sign_failed: "{game}签到失败：{message}"
@@ -43,6 +43,7 @@ game:
   resign_done: "{game}补签完成：{message}"
   reward_line: "{name} * {num}"
 community:
+  sign_wait: "开始执行{game}社区签到，请等待任务完成..."
   task_start: "已提交{game}社区任务：{taskId}\n状态：{status}"
   task_done: "{game}社区任务完成：{message}"
   task_running: "{game}社区任务仍在执行：{status}\n任务 ID：{taskId}"
