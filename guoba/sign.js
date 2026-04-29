@@ -1,8 +1,3 @@
-const gameOptions = [
-  { label: '幻塔', value: 'huanta' },
-  { label: '异环', value: 'yihuan' }
-]
-
 /** 锅巴配置：自动签到 */
 export default function getSignSchemas(groupList) {
   return [
@@ -13,7 +8,7 @@ export default function getSignSchemas(groupList) {
     {
       field: 'sign.auto_sign',
       label: '自动签到开关',
-      bottomHelpMessage: '开启后按 cron 自动执行配置游戏的签到',
+      bottomHelpMessage: '开启后按 cron 自动执行塔吉多聚合签到',
       component: 'Switch',
       componentProps: {
         checkedChildren: '开启',
@@ -25,17 +20,6 @@ export default function getSignSchemas(groupList) {
       label: '自动签到时间',
       bottomHelpMessage: '可视化设置定时任务，也可以直接编辑 cron 表达式',
       component: 'EasyCron'
-    },
-    {
-      field: 'sign.games',
-      label: '自动签到游戏',
-      bottomHelpMessage: '选择自动签到需要执行的游戏',
-      component: 'Select',
-      componentProps: {
-        mode: 'multiple',
-        options: gameOptions,
-        placeholder: '请选择游戏'
-      }
     },
     {
       field: 'sign.notify_list.friend',

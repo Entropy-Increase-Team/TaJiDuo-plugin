@@ -47,12 +47,6 @@ function toNumber(value, fallback) {
   return Number.isFinite(number) ? number : fallback
 }
 
-function toOptionalNumber(value) {
-  if (value === '' || value === undefined || value === null) return undefined
-  const number = Number(value)
-  return Number.isFinite(number) ? number : undefined
-}
-
 function normalizeList(value) {
   if (!Array.isArray(value)) return []
   return value.filter((item) => item !== undefined && item !== null && String(item).trim() !== '').map((item) => String(item))
@@ -79,27 +73,13 @@ function normalizeCommon(common = {}) {
       enabled: true,
       port: 25188,
       public_link: 'http://127.0.0.1:25188'
-    },
-    community_task: {
-      action_delay_ms: 3000,
-      step_delay_ms: 8000,
-      between_communities_ms: 15000,
-      poll_times: 36,
-      poll_interval_ms: 5000
     }
   }, common)
 
   merged.timeout = toNumber(merged.timeout, 25000)
   merged.login_server.enabled = merged.login_server.enabled !== false
   merged.login_server.port = toNumber(merged.login_server.port, 25188)
-  merged.community_task.action_delay_ms = toNumber(merged.community_task.action_delay_ms, 3000)
-  merged.community_task.step_delay_ms = toNumber(merged.community_task.step_delay_ms, 8000)
-  merged.community_task.between_communities_ms = toNumber(merged.community_task.between_communities_ms, 15000)
-  merged.community_task.poll_times = toNumber(merged.community_task.poll_times, 36)
-  merged.community_task.poll_interval_ms = toNumber(merged.community_task.poll_interval_ms, 5000)
-  const batchPollTimes = toOptionalNumber(merged.community_task.batch_poll_times)
-  if (batchPollTimes === undefined) delete merged.community_task.batch_poll_times
-  else merged.community_task.batch_poll_times = batchPollTimes
+  delete merged.community_task
   return merged
 }
 
@@ -107,7 +87,6 @@ function normalizeSign(sign = {}) {
   const merged = deepMerge({
     auto_sign: true,
     auto_sign_cron: '30 0 * * *',
-    games: ['huanta', 'yihuan'],
     notify_list: {
       friend: [],
       group: []
@@ -115,8 +94,7 @@ function normalizeSign(sign = {}) {
   }, sign)
 
   merged.auto_sign = merged.auto_sign === true
-  merged.games = normalizeList(merged.games).filter((item) => ['huanta', 'yihuan'].includes(item))
-  if (merged.games.length === 0) merged.games = ['huanta', 'yihuan']
+  delete merged.games
   merged.notify_list.friend = normalizeList(merged.notify_list?.friend)
   merged.notify_list.group = normalizeList(merged.notify_list?.group)
   return merged
@@ -157,11 +135,6 @@ function assignMessageConfig(result, messageConfig) {
     'game.sign_state',
     'game.already_signed',
     'game.not_signed',
-    'community.sign_wait',
-    'community.task_start',
-    'community.task_done',
-    'community.task_running',
-    'community.task_failed',
     'community.state',
     'community.level',
     'shop.coin',
@@ -193,15 +166,8 @@ export function supportGuoba() {
           'login_server.enabled': common.login_server.enabled,
           'login_server.port': common.login_server.port,
           'login_server.public_link': common.login_server.public_link,
-          'community_task.action_delay_ms': common.community_task.action_delay_ms,
-          'community_task.step_delay_ms': common.community_task.step_delay_ms,
-          'community_task.between_communities_ms': common.community_task.between_communities_ms,
-          'community_task.poll_times': common.community_task.poll_times,
-          'community_task.poll_interval_ms': common.community_task.poll_interval_ms,
-          'community_task.batch_poll_times': common.community_task.batch_poll_times,
           'sign.auto_sign': sign.auto_sign,
           'sign.auto_sign_cron': sign.auto_sign_cron,
-          'sign.games': sign.games,
           'sign.notify_list.friend': sign.notify_list.friend,
           'sign.notify_list.group': sign.notify_list.group,
           'help.help_group': help.help_group
@@ -222,13 +188,7 @@ export function supportGuoba() {
             'timeout',
             'login_server.enabled',
             'login_server.port',
-            'login_server.public_link',
-            'community_task.action_delay_ms',
-            'community_task.step_delay_ms',
-            'community_task.between_communities_ms',
-            'community_task.poll_times',
-            'community_task.poll_interval_ms',
-            'community_task.batch_poll_times'
+            'login_server.public_link'
           ])
 
           for (const [key, value] of Object.entries(data || {})) {

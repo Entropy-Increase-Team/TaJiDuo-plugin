@@ -43,11 +43,6 @@ game:
   resign_done: "{game}补签完成：{message}"
   reward_line: "{name} * {num}"
 community:
-  sign_wait: "开始执行{game}社区签到，请等待任务完成..."
-  task_start: "已提交{game}社区任务：{taskId}\n状态：{status}"
-  task_done: "{game}社区任务完成：{message}"
-  task_running: "{game}社区任务仍在执行：{status}\n任务 ID：{taskId}"
-  task_failed: "{game}社区任务失败：{message}"
   state: "{game}社区签到：{state}"
   level: "{game}社区等级：Lv.{level}，今日经验 {todayExp}，当前经验 {exp}/{nextLevelExp}"
   task_item: "{title} {completeTimes}/{limitTimes}"

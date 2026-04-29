@@ -80,7 +80,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET` | `/api/v1/games/yihuan/sign/resign-info` | 无 | `gameId`、`coin`、`cost`、`reSignCnt`、`reSignLimit`、`todaySign` |
 | `POST` | `/api/v1/games/yihuan/sign/game` | JSON：`roleId` 必填 | `gameId`、`roleId`、`upstream` |
 | `POST` | `/api/v1/games/yihuan/sign/resign` | JSON：`roleId` 必填 | `gameId`、`roleId`、`upstream` |
-| `POST` | `/api/v1/games/yihuan/sign/all` | JSON：可空；`roles` 可选 | `deviceId`、`tgdUid`、`app`、`games` |
+| `POST` | `/api/v1/games/yihuan/sign/all` | JSON：可空；`roles`、`signGameIds` 可选 | `deviceId`、`tgdUid`、`app`（含社区签到）、`games` |
 | `POST` | `/api/v1/games/yihuan/sign/app` | JSON：可空 | `communityId`、`success`、`message`、`exp`、`goldCoin` |
 | `POST` | `/api/v1/games/yihuan/community/sign/all` | JSON：`actionDelayMs`、`stepDelayMs` 可选 | `taskId`、`status`、`request` |
 | `GET` | `/api/v1/games/yihuan/community/sign/tasks/:taskId` | Path：`taskId` 必填 | 任务状态和执行结果 |
@@ -706,7 +706,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ```json
 {
-  "roleId": "214075351008"
+  "roleId": "214075351008",
+  "signGameIds": ["1289", "1257"]
 }
 ```
 
@@ -715,10 +716,17 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```json
 {
   "code": 0,
-  "message": "异环游戏签到成功",
+  "message": "签到成功，今日物品：异核x10",
   "data": {
     "gameId": "1289",
-    "roleId": "214075351008",
+    "attemptedGameIds": ["1289"],
+    "role": {
+      "roleId": "214075351008",
+      "gameId": "1289"
+    },
+    "success": true,
+    "message": "签到成功，今日物品：异核x10",
+    "reward": "异核x10",
     "upstream": {
       "success": true,
       "httpStatus": 200,
@@ -731,8 +739,9 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 说明：
 
-- 当前是单角色直接签到
 - 需要显式传 `roleId`
+- `signGameIds` 可选；不传时会按角色 `gameId`、默认 `1289`、兼容 `1257` 依次尝试
+- 如果上游返回已签到，会复查 `sign/state.todaySign`，确认后按成功返回
 
 ### `POST /api/v1/games/yihuan/sign/all`
 
@@ -753,6 +762,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 ```json
 {
+  "signGameIds": ["1289", "1257"],
   "roles": [
     {
       "roleId": "214075351008",
@@ -768,8 +778,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 1. 使用已保存 `refreshToken` 刷新账号
 2. 执行一次异环社区 `sign/app`
 3. 自动补拉异环角色
-4. 查询游戏签到状态和签到奖励表
-5. 对每个角色执行 `sign/game`
+4. 对每个角色按 `signGameIds`、角色 `gameId`、默认 `1289`、兼容 `1257` 依次尝试 `sign/game`
+5. 成功或确认已签到后查询游戏签到状态和签到奖励表，返回今日物品
 
 响应示例：
 
@@ -778,6 +788,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
   "code": 0,
   "message": "成功",
   "data": {
+    "success": true,
+    "message": "异环聚合签到完成",
     "deviceId": "device-x",
     "tgdUid": "10001",
     "roles": [
@@ -795,14 +807,17 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
     },
     "games": [
       {
+        "gameId": "1289",
+        "attemptedGameIds": ["1289"],
         "role": {
           "roleId": "214075351008",
           "roleName": "主角",
           "gameId": "1289"
         },
         "success": true,
-        "message": "获得异核*10",
-        "reward": "获得异核*10"
+        "message": "今日已签到，今日物品：异核x10",
+        "alreadySigned": true,
+        "reward": "异核x10"
       }
     ]
   }
@@ -816,7 +831,10 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 - 如果本次走的是已保存账号，刷新后的原始 token 只会回写数据库
 - `app` 是社区签到摘要
 - `games[*]` 是每个角色的游戏签到摘要
-- `reward` 会根据账号级 `sign/state.days` 和 `sign/rewards` 推算；如果上游奖励表缺失，则保留上游签到消息
+- `signGameIds` 可选，用于覆盖/补充游戏签到候选 `gameId`
+- `games[*].gameId` 是本次实际成功或确认已签到的 `gameId`
+- `reward` 会根据 `sign/state.days` 和 `sign/rewards` 推算今日物品，格式为 `物品x数量`
+- 如果上游奖励表缺失，则保留上游签到消息
 
 ### `POST /api/v1/games/yihuan/sign/resign`
 

@@ -1,6 +1,6 @@
 import TaJiDuoApi from './tajiduoApi.js'
 import setting from '../utils/setting.js'
-import { getPlatformId, getPlatformUserId } from '../utils/common.js'
+import { getPlatformId, getPlatformUserId, normalizeHeaderId } from '../utils/common.js'
 
 export default class TaJiDuoRequest {
   constructor(frameworkToken = '', option = {}) {
@@ -27,14 +27,7 @@ export default class TaJiDuoRequest {
     return { url, body, method, auth, platform }
   }
 
-  async getData(type, data = {}) {
-    const urlData = this.getUrl(type, data)
-    if (!urlData) {
-      logger.error(`[TaJiDuo-plugin][API] 未知接口：${type}`)
-      return false
-    }
-
-    const { url, body, method, auth, platform } = urlData
+  getHeaders(type, data = {}, { auth = true, platform = false } = {}) {
     let headers = {
       'Content-Type': 'application/json'
     }
@@ -49,17 +42,31 @@ export default class TaJiDuoRequest {
     }
 
     if (platform) {
-      headers['X-Platform-Id'] = data.platformId || getPlatformId(data.e)
-      headers['X-Platform-User-Id'] = String(data.platformUserId || getPlatformUserId(data.e))
+      headers['X-Platform-Id'] = normalizeHeaderId(data.platformId || getPlatformId(data.e), 'yunzai')
+      headers['X-Platform-User-Id'] = normalizeHeaderId(data.platformUserId || getPlatformUserId(data.e))
     }
 
     if (data.headers) {
       headers = { ...headers, ...data.headers }
     }
 
+    return headers
+  }
+
+  async getData(type, data = {}) {
+    const urlData = this.getUrl(type, data)
+    if (!urlData) {
+      logger.error(`[TaJiDuo-plugin][API] 未知接口：${type}`)
+      return false
+    }
+
+    const { url, body, method, auth, platform } = urlData
+    const controller = new AbortController()
+    const timeout = Number(this.commonConfig.timeout || 25000)
+    const timer = setTimeout(() => controller.abort(), timeout)
     const param = {
-      headers,
-      timeout: Number(this.commonConfig.timeout || 25000)
+      headers: this.getHeaders(type, data, { auth, platform }),
+      signal: controller.signal
     }
     if (method) {
       param.method = method
@@ -76,13 +83,16 @@ export default class TaJiDuoRequest {
     try {
       response = await fetch(url, param)
     } catch (error) {
-      logger.error(`[TaJiDuo-plugin][API][${type}] fetch error：${error?.message || error}`)
+      const message = error?.name === 'AbortError' ? `请求超时（${timeout}ms）` : (error?.message || error)
+      logger.error(`[TaJiDuo-plugin][API][${type}] fetch error：${message}`)
       return {
         code: -1,
-        message: `网络请求失败：${error?.message || error}`,
+        message: `网络请求失败：${message}`,
         data: null,
         api: type
       }
+    } finally {
+      clearTimeout(timer)
     }
 
     let res = null

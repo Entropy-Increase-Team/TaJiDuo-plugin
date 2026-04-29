@@ -12,13 +12,3 @@ login_server:
   port: 25188
   # 对外展示给用户的登录服务地址；如果部署在公网或反代后，请改成公网地址
   public_link: "http://127.0.0.1:25188"
-# 社区任务轮询设置
-community_task:
-  action_delay_ms: 3000
-  step_delay_ms: 8000
-  between_communities_ms: 15000
-  # 单社区默认轮询 3 分钟
-  poll_times: 36
-  poll_interval_ms: 5000
-  # 双社区任务轮询次数；留空则默认使用 poll_times 的 3 倍
-  batch_poll_times: null

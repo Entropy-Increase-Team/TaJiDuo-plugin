@@ -140,33 +140,6 @@ export default function getMessageSchemas() {
       label: '社区任务文案'
     },
     {
-      field: 'message.community.sign_wait',
-      label: '社区签到等待提示',
-      component: 'Input'
-    },
-    {
-      field: 'message.community.task_start',
-      label: '任务提交',
-      component: 'InputTextArea',
-      componentProps: { rows: 3 }
-    },
-    {
-      field: 'message.community.task_done',
-      label: '任务完成',
-      component: 'Input'
-    },
-    {
-      field: 'message.community.task_running',
-      label: '任务执行中',
-      component: 'InputTextArea',
-      componentProps: { rows: 3 }
-    },
-    {
-      field: 'message.community.task_failed',
-      label: '任务失败',
-      component: 'Input'
-    },
-    {
       field: 'message.community.state',
       label: '社区签到状态',
       component: 'Input'

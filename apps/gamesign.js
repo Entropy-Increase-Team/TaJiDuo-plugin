@@ -2,16 +2,21 @@ import TaJiDuoUser from '../model/tajiduoUser.js'
 import setting from '../utils/setting.js'
 import { normalizeCronExpression } from '../utils/cron.js'
 import { withSignLock } from '../utils/signLock.js'
-import { runAllCommunitySignTask } from '../utils/communitySign.js'
 import {
   GAME,
   getMessage,
   getUnbindMessage,
-  normalizeRole,
   PREFIX,
   summarizeApiError,
   trimMsg
 } from '../utils/common.js'
+
+const COMMUNITY_TASK_POLL_TIMES = 60
+const COMMUNITY_TASK_POLL_INTERVAL = 5000
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 function getTaskCron(cronExpression, fallback, taskName) {
   try {
@@ -30,12 +35,99 @@ function roleLabel(role = {}) {
   return role.roleName || role.name || role.roleId || role.id || '未知角色'
 }
 
+function accountLabel(user = {}) {
+  return user.nickname || user.tjdUid || '塔吉多账号'
+}
+
+function resultOk(res) {
+  return !!res && Number(res.code) === 0 && res.data?.success !== false
+}
+
+function stageMessage(stage = {}, fallback = '完成') {
+  if (stage.message) return cleanSignMessage(stage.message)
+  if (stage.reward) return stage.reward
+  if (stage.success === false || stage.status === 'failed') return '失败'
+  return fallback
+}
+
+function cleanSignMessage(message = '') {
+  return String(message || '').replace(/（gameId=\d+），?/g, '')
+}
+
+function signStatusMessage(data = {}) {
+  if (data.success === false) return '签到部分失败'
+  return '签到完成'
+}
+
+function formatGameSignLines(gameCode, data = {}, communityItem = null) {
+  const lines = [`签到：${signStatusMessage(data)}`]
+
+  if (data.app) {
+    lines.push(`社区：${stageMessage(data.app)}`)
+  } else if (communityItem) {
+    lines.push(`社区：${stageMessage(communityItem, communityItem.success === false ? '失败' : '完成')}`)
+  }
+
+  const items = Array.isArray(data.games) ? data.games : []
+  if (items.length > 0) {
+    for (const item of items) {
+      const label = roleLabel(item.role || item)
+      lines.push(`${label}：${stageMessage(item)}`)
+    }
+  } else if (!data.app) {
+    lines.push('没有返回签到明细')
+  }
+
+  return lines
+}
+
+function getCommunityTaskId(data = {}) {
+  return data.community?.task?.taskId || data.community?.taskId || ''
+}
+
+function getCommunityItems(data = {}) {
+  const items = data.result?.batch?.items || data.result?.items || data.items || data.batch?.items || []
+  return Array.isArray(items) ? items : []
+}
+
+function mapCommunityItems(data = {}) {
+  const result = {}
+  for (const item of getCommunityItems(data)) {
+    const gameCode = String(item.gameCode || '').toLowerCase()
+    if (gameCode === 'huanta' || gameCode === 'yihuan') result[gameCode] = item
+  }
+  return result
+}
+
+function formatTajiduoSignLines(data = {}, communityTask = null) {
+  const lines = []
+
+  if (data.ht) {
+    lines.push('【幻塔】')
+    lines.push(...formatGameSignLines('huanta', data.ht, communityTask?.items?.huanta))
+  }
+
+  if (data.yh) {
+    lines.push('【异环】')
+    lines.push(...formatGameSignLines('yihuan', data.yh, communityTask?.items?.yihuan))
+  }
+
+  if (communityTask?.lines?.length) {
+    lines.push(...communityTask.lines)
+  }
+
+  if (lines.length === 0) {
+    lines.push(data.message || (data.success === false ? '塔吉多签到部分失败' : '塔吉多签到完成'))
+  }
+  return lines
+}
+
 export class gamesign extends plugin {
   constructor() {
     const signConfig = setting.getConfig('sign') || {}
     super({
-      name: '[TaJiDuo-plugin]游戏签到',
-      dsc: '幻塔/异环游戏签到',
+      name: '[TaJiDuo-plugin]聚合签到',
+      dsc: '塔吉多/幻塔/异环聚合签到',
       event: 'message',
       priority: 50,
       rule: [
@@ -66,21 +158,6 @@ export class gamesign extends plugin {
         {
           reg: `^${PREFIX.yihuan}补签(?:\\s*\\d+)?$`,
           fnc: 'yihuanResign'
-        },
-        {
-          reg: `^${PREFIX.tajiduo}全部签到$`,
-          fnc: 'tajiduoSignTask',
-          permission: 'master'
-        },
-        {
-          reg: `^${PREFIX.huanta}全部签到$`,
-          fnc: 'huantaSignTask',
-          permission: 'master'
-        },
-        {
-          reg: `^${PREFIX.yihuan}全部签到$`,
-          fnc: 'yihuanSignTask',
-          permission: 'master'
         }
       ]
     })
@@ -103,30 +180,49 @@ export class gamesign extends plugin {
     return users
   }
 
-  async signOne(tjdUser, gameCode) {
-    const game = GAME[gameCode]
-    if (!game) return { ok: false, lines: ['未知游戏'] }
-
-    const rolesRes = await tjdUser.tjdReq.getData('game_roles', { gameCode })
-    if (!rolesRes || Number(rolesRes.code) !== 0) {
-      return { ok: false, lines: [getMessage('game.sign_failed', { game: game.name, message: summarizeApiError(rolesRes) })] }
-    }
-    const roles = (rolesRes.data?.roles || []).map(normalizeRole).filter((role) => role.roleId)
-    if (roles.length === 0) {
-      return { ok: false, lines: [getMessage('game.roles_empty', { game: game.name })] }
+  async signOne(tjdUser, gameCode = '') {
+    const res = await tjdUser.tjdReq.getData('sign_all', { gameCode })
+    if (!res || Number(res.code) !== 0) {
+      const game = GAME[gameCode]
+      const title = game ? `${game.name}签到` : '塔吉多签到'
+      return { ok: false, lines: [`${title}失败：${summarizeApiError(res)}`] }
     }
 
-    const lines = []
-    for (const role of roles) {
-      const res = await tjdUser.tjdReq.getData('sign_game', { gameCode, roleId: role.roleId })
-      if (!res || Number(res.code) !== 0) {
-        lines.push(`${roleLabel(role)}：${summarizeApiError(res)}`)
-      } else {
-        lines.push(`${roleLabel(role)}：${res.data?.message || res.data?.upstream?.message || res.message || '完成'}`)
+    const data = res.data || {}
+    const communityTask = gameCode ? null : await this.pollCommunityTask(tjdUser, getCommunityTaskId(data))
+    return {
+      ok: resultOk(res) && (communityTask?.ok !== false),
+      lines: gameCode ? formatGameSignLines(gameCode, data) : formatTajiduoSignLines(data, communityTask)
+    }
+  }
+
+  async pollCommunityTask(tjdUser, taskId) {
+    if (!taskId) return null
+
+    let latest = null
+    for (let i = 0; i < COMMUNITY_TASK_POLL_TIMES; i++) {
+      await sleep(COMMUNITY_TASK_POLL_INTERVAL)
+      latest = await tjdUser.tjdReq.getData('all_community_task_status', { taskId })
+      if (!latest || Number(latest.code) !== 0) {
+        return {
+          ok: false,
+          lines: [`社区任务：${summarizeApiError(latest)}`]
+        }
       }
+      if (latest.data?.completed || latest.data?.status === 'finished' || latest.data?.status === 'failed') break
     }
 
-    return { ok: true, lines }
+    const data = latest?.data
+    if (!data) {
+      return { ok: false, lines: ['社区任务：没有拿到任务状态'] }
+    }
+    if (!data.completed && data.status !== 'finished' && data.status !== 'failed') {
+      return { ok: false, lines: [`社区任务：仍在执行（${data.status || 'running'}）`] }
+    }
+    if (data.success === false || data.status === 'failed') {
+      return { ok: false, lines: [`社区任务：${data.message || data.error || '失败'}`] }
+    }
+    return { ok: true, items: mapCommunityItems(data), lines: [] }
   }
 
   async sign(gameCode) {
@@ -138,7 +234,7 @@ export class gamesign extends plugin {
       await this.reply(getMessage('game.sign_start', { game: game.name }))
       const lines = [getMessage('game.sign_done', { game: game.name })]
       for (const user of users) {
-        const title = user.nickname || user.tjdUid || '塔吉多账号'
+        const title = accountLabel(user)
         const result = await this.signOne(user, gameCode)
         lines.push(`【${title}】`)
         lines.push(...result.lines)
@@ -156,14 +252,8 @@ export class gamesign extends plugin {
       await this.reply('开始执行塔吉多签到...')
       const lines = ['塔吉多签到完成']
       for (const user of users) {
-        const title = user.nickname || user.tjdUid || '塔吉多账号'
-        lines.push(`【${title}】`)
-        for (const gameCode of ['huanta', 'yihuan']) {
-          const game = GAME[gameCode]
-          const result = await this.signOne(user, gameCode)
-          lines.push(`【${game.name}】`)
-          lines.push(...result.lines)
-        }
+        const result = await this.signOne(user)
+        lines.push(...result.lines)
       }
       await this.reply(lines.join('\n'))
       return true
@@ -238,7 +328,7 @@ export class gamesign extends plugin {
     return this.resign('yihuan')
   }
 
-  async runSignTask(gameCode, manual = false) {
+  async runSignTask(gameCode = '', manual = false) {
     if (!redis) return { total: 0, success: 0, fail: 0, lines: ['redis 不可用'] }
     const keys = await redis.keys('TJD:USER:*')
     const stats = { total: 0, success: 0, fail: 0, lines: [] }
@@ -258,75 +348,13 @@ export class gamesign extends plugin {
     return stats
   }
 
-  async signTask(gameCode) {
-    if (!this.e?.isMaster) return false
-    const game = GAME[gameCode]
-    return withSignLock(this, `${game.name}全部签到`, async () => {
-      const stats = await this.runSignTask(gameCode, true)
-      const lines = [
-        `${game.name}全部签到完成`,
-        `账号：${stats.total}，成功：${stats.success}，失败：${stats.fail}`,
-        ...stats.lines.slice(0, 30)
-      ]
-      if (stats.lines.length > 30) lines.push(`还有 ${stats.lines.length - 30} 条结果未展开`)
-      await this.reply(lines.join('\n'))
-      return true
-    })
-  }
-
-  async huantaSignTask() {
-    return this.signTask('huanta')
-  }
-
-  async yihuanSignTask() {
-    return this.signTask('yihuan')
-  }
-
-  async tajiduoSignTask() {
-    if (!this.e?.isMaster) return false
-    return withSignLock(this, '塔吉多全部签到', async () => {
-      await this.reply('开始执行塔吉多全部签到...')
-
-      const gameDetailLines = []
-      const gameLines = ['塔吉多全部签到：游戏签到完成']
-      for (const gameCode of ['huanta', 'yihuan']) {
-        const stats = await this.runSignTask(gameCode, true)
-        gameLines.push(`${GAME[gameCode].name}游戏签到：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
-        gameDetailLines.push(...stats.lines.map((line) => `${GAME[gameCode].name}游戏：${line}`))
-      }
-
-      gameLines.push(...gameDetailLines.slice(0, 30))
-      if (gameDetailLines.length > 30) gameLines.push(`还有 ${gameDetailLines.length - 30} 条游戏结果未展开`)
-      await this.reply(gameLines.join('\n'))
-
-      await this.reply('游戏签到已完成，开始执行社区签到，请等待任务完成...')
-      const communityStats = await runAllCommunitySignTask(true, { waitUntilDone: true })
-      const communityDetailLines = communityStats.lines.map((line) => `社区：${line}`)
-      const communityLines = [
-        communityStats.fail > 0 ? '塔吉多全部签到：社区签到结果' : '塔吉多全部签到：社区签到完成',
-        `社区签到：账号 ${communityStats.total}，成功 ${communityStats.success}，失败 ${communityStats.fail}`,
-        ...communityDetailLines.slice(0, 30)
-      ]
-
-      if (communityDetailLines.length > 30) communityLines.push(`还有 ${communityDetailLines.length - 30} 条社区结果未展开`)
-      await this.reply(communityLines.join('\n'))
-      return true
-    })
-  }
-
   async autoSignTask() {
     this.setting = setting.getConfig('sign') || {}
     if (this.setting.auto_sign === false) return true
 
-    const games = Array.isArray(this.setting.games) && this.setting.games.length > 0
-      ? this.setting.games
-      : ['huanta', 'yihuan']
     const lines = ['TaJiDuo-plugin 自动签到完成']
-    for (const gameCode of games) {
-      if (!GAME[gameCode]) continue
-      const stats = await this.runSignTask(gameCode)
-      lines.push(`${GAME[gameCode].name}：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
-    }
+    const stats = await this.runSignTask()
+    lines.push(`塔吉多签到：账号 ${stats.total}，成功 ${stats.success}，失败 ${stats.fail}`)
     await this.sendNotifyList(lines.join('\n'))
     return true
   }

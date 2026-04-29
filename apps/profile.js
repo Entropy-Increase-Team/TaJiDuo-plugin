@@ -29,7 +29,7 @@ function cleanSpaces(text = '') {
 
 function getCommandArgs(text = '', gameCode = 'yihuan', commandPattern = '') {
   const prefix = gameCode === 'huanta' ? '(?:幻塔|[Hh][Tt])' : '(?:异环|[Yy][Hh])'
-  return cleanSpaces(String(text || '').trim().replace(new RegExp(`^[/#]?${prefix}${commandPattern}`, 'i'), ''))
+  return cleanSpaces(String(text || '').trim().replace(new RegExp(`^[/#]?${prefix}\\s*${commandPattern}`, 'i'), ''))
 }
 
 function getHuantaRecordType(text = '') {

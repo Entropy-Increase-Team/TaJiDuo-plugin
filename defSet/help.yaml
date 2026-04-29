@@ -13,14 +13,8 @@ help_group:
   - group: "签到"
     list:
       - "tjd签到"
-      - "tjd社区签到"
-      - "tjd全部签到"
       - "ht签到"
-      - "ht社区签到"
-      - "ht全部签到"
       - "yh签到"
-      - "yh社区签到"
-      - "yh全部签到"
   - group: "幻塔"
     list:
       - "ht档案"

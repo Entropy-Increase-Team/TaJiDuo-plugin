@@ -436,7 +436,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 作用：
 
-- 只执行单个角色的游戏签到
+- 执行单个角色的游戏签到
+- 签到成功或上游返回已签到时，会继续查询 `sign/state` 和 `sign/rewards` 推算今日物品
 
 说明：
 
@@ -449,20 +450,30 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ```json
 {
   "code": 0,
-  "message": "成功",
+  "message": "签到成功，今日物品：墨晶x50",
   "data": {
+    "role": {
+      "roleId": "20001",
+      "gameId": "1256"
+    },
     "success": true,
-    "httpStatus": 200,
-    "code": 0,
-    "message": "ok"
+    "message": "签到成功，今日物品：墨晶x50",
+    "reward": "墨晶x50",
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
   }
 }
 ```
 
 说明：
 
-- 这个接口直接返回单次游戏签到的上游归一化结果
-- 与 `sign/all` 不同，它不会额外整理成角色级摘要
+- 这个接口返回角色级游戏签到摘要
+- `reward` 会根据 `sign/state.days` 和 `sign/rewards` 推算，格式为 `物品x数量`
+- 如果上游奖励表缺失，则保留上游签到消息
 
 ### `POST /api/v1/games/huanta/sign/resign`
 
@@ -547,6 +558,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 2. 自动补拉角色
 3. 执行 `sign/app`
 4. 对每个角色执行 `sign/game`
+5. 签到成功或确认已签到后查询游戏签到状态和签到奖励表，返回今日物品
 
 响应示例：
 
@@ -555,6 +567,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
   "code": 0,
   "message": "成功",
   "data": {
+    "success": true,
+    "message": "幻塔聚合签到完成",
     "deviceId": "device-x",
     "tgdUid": "10001",
     "roles": [
@@ -583,8 +597,8 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
           "gameId": "1256"
         },
         "success": true,
-        "message": "获得墨晶*50",
-        "reward": "获得墨晶*50"
+        "message": "签到成功，今日物品：墨晶x50",
+        "reward": "墨晶x50"
       },
       {
         "role": {
@@ -593,17 +607,12 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
           "gameId": "1256"
         },
         "success": true,
-        "message": "获得墨晶*50",
-        "reward": "获得墨晶*50"
+        "message": "今日已签到，今日物品：墨晶x50",
+        "alreadySigned": true,
+        "reward": "墨晶x50"
       }
     ],
     "upstream": {
-      "refresh": {
-        "success": true,
-        "httpStatus": 200,
-        "code": 0,
-        "message": "ok"
-      },
       "bindRole": {
         "success": true,
         "httpStatus": 200,
@@ -637,8 +646,10 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 
 - 必须显式传 `fwt`
 - 当前 `fwt` 无效、已删除或已失效时返回 `401`
-- 如果本次走的是已保存账号，刷新后的原始 token 只会回写数据库
+- 接口会先刷新已保存登录态；刷新后的原始 token 只会回写数据库
 - 响应里不会返回 `accessToken`、`refreshToken`
+- `data.success` 表示社区 APP 签到和所有角色游戏签到是否都成功
+- 如果任一阶段失败，`data.message` 会是 `幻塔聚合签到部分失败`
 - `app` 是社区签到摘要
 - `games[*]` 是每个角色的游戏签到摘要
 
@@ -1065,4 +1076,5 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 ## 当前边界
 
 - `community/sign/all` 当前只会主动执行 5 个任务，不会主动补 `被点赞帖子`、`被回复`、`被收藏`
-- `sign/game` 是单角色直接签到接口，返回的是单次上游归一化结果，不是聚合摘要
+- `sign/game` 是单角色直接签到接口，返回角色级游戏签到摘要
+- `sign/all` 是聚合摘要接口，会返回顶层 `success/message`，并按 `app`、`games` 拆分社区签到和游戏签到结果

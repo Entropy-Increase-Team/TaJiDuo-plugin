@@ -91,6 +91,7 @@
 | `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
 | `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
 | `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
+| `POST /api/v1/games/sign/all` | 跨游戏聚合签到 |
 | `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
 | `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
 | `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
@@ -1098,6 +1099,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET /api/v1/community/web/official-posts` | Web 官方公告列表 |
 | `GET /api/v1/community/web/posts/full` | Web 帖子详情 |
 | `GET /api/v1/redeem-codes/htnews` | 4399 兑换码上游源 |
+| `POST /api/v1/games/sign/all` | 跨游戏聚合签到 |
 | `POST /api/v1/games/community/sign/all` | 提交跨社区批量任务 |
 | `GET /api/v1/games/community/sign/tasks/:taskId` | 查询跨社区批量任务状态 |
 
@@ -1547,6 +1549,111 @@ JSON 请求体：
 }
 ```
 
+### `POST /api/v1/games/sign/all`
+
+请求头：
+
+```http
+X-API-Key: your-api-key
+X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
+```
+
+请求体可为空：
+
+```json
+{
+}
+```
+
+执行内容：
+
+1. 刷新当前 `fwt` 对应的塔吉多登录态
+2. 执行幻塔聚合签到：幻塔社区 APP 签到 + 幻塔游戏角色签到
+3. 执行异环聚合签到：异环社区 APP 签到 + 异环游戏角色签到
+4. 提交跨社区批量任务：幻塔社区 5 步任务 + 异环社区 5 步任务
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "success": true,
+    "message": "聚合签到已提交",
+    "ht": {
+      "success": true,
+      "message": "幻塔聚合签到完成",
+      "deviceId": "device-x",
+      "tgdUid": "10001",
+      "app": {
+        "success": true,
+        "message": "社区任务签到成功，获得5经验，12金币",
+        "exp": 5,
+        "goldCoin": 12
+      },
+      "games": [
+        {
+          "role": {
+            "roleId": "20001",
+            "roleName": "Aster",
+            "gameId": "1256"
+          },
+          "success": true,
+          "message": "获得墨晶*50",
+          "reward": "获得墨晶*50"
+        }
+      ]
+    },
+    "yh": {
+      "success": true,
+      "message": "异环聚合签到完成",
+      "deviceId": "device-x",
+      "tgdUid": "10001",
+      "app": {
+        "success": true,
+        "message": "社区任务签到成功，获得5经验，12金币",
+        "exp": 5,
+        "goldCoin": 12
+      },
+      "games": [
+        {
+          "gameId": "1289",
+          "attemptedGameIds": ["1289"],
+          "role": {
+            "roleId": "214075351008",
+            "roleName": "主角",
+            "gameId": "1289"
+          },
+          "success": true,
+          "message": "签到成功（gameId=1289），今日道具：异核x10",
+          "reward": "异核x10"
+        }
+      ]
+    },
+    "community": {
+      "message": "任务已开始",
+      "task": {
+        "taskId": "3e52d60aa7c0441f8f70852f634c6540",
+        "scope": "community-batch",
+        "status": "pending",
+        "completed": false,
+        "message": "任务已创建"
+      }
+    }
+  }
+}
+```
+
+说明：
+
+- 必须显式传 `fwt`
+- 接口会先刷新已保存登录态；刷新失败会返回 `401 当前 fwt 已失效，请重新登录`
+- `data.success` 表示 HT、YH、社区任务提交三个阶段是否都成功
+- 任一阶段失败时，`data.message` 为 `聚合签到部分失败`
+- `data.community` 只表示跨社区任务是否成功提交；真正执行结果需要继续查询 `/api/v1/games/community/sign/tasks/:taskId`
+- 当前不会在响应中返回 `accessToken`、`refreshToken`
+
 ### `POST /api/v1/games/community/sign/all`
 
 请求头：
@@ -1603,6 +1710,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 说明：
 
 - 必须显式传 `fwt`
+- 接口会先刷新已保存登录态；刷新失败会返回 `401 当前 fwt 已失效，请重新登录`
 - `actionDelayMs` 默认 `3000`
 - `stepDelayMs` 默认 `8000`
 - `betweenCommunitiesMs` 默认 `15000`

@@ -1,9 +1,4 @@
 import TaJiDuoUser from '../model/tajiduoUser.js'
-import { withSignLock } from '../utils/signLock.js'
-import {
-  getCommunityConfig,
-  signAllCommunities
-} from '../utils/communitySign.js'
 import {
   compactLine,
   GAME,
@@ -12,10 +7,6 @@ import {
   PREFIX,
   summarizeApiError
 } from '../utils/common.js'
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
 
 function flattenTasks(groups = []) {
   const out = []
@@ -35,18 +26,6 @@ export class commsign extends plugin {
       event: 'message',
       priority: 50,
       rule: [
-        {
-          reg: `^${PREFIX.tajiduo}社区(任务|签到)$`,
-          fnc: 'tajiduoCommunitySign'
-        },
-        {
-          reg: `^${PREFIX.huanta}社区(任务|签到)$`,
-          fnc: 'huantaCommunitySign'
-        },
-        {
-          reg: `^${PREFIX.yihuan}社区(任务|签到)$`,
-          fnc: 'yihuanCommunitySign'
-        },
         {
           reg: `^${PREFIX.huanta}社区状态$`,
           fnc: 'huantaCommunityState'
@@ -83,113 +62,6 @@ export class commsign extends plugin {
       return []
     }
     return users
-  }
-
-  getCommunityConfig() {
-    return getCommunityConfig()
-  }
-
-  async communitySign(gameCode) {
-    const game = GAME[gameCode]
-    return withSignLock(this, `${game.name}社区签到`, async () => {
-      const users = await this.getUsers()
-      if (users.length === 0) return true
-
-      await this.reply(getMessage('community.sign_wait', { game: game.name }))
-      const cfg = this.getCommunityConfig()
-      const lines = []
-      for (const user of users) {
-        const res = await user.tjdReq.getData('community_sign_all', {
-          gameCode,
-          actionDelayMs: cfg.action_delay_ms,
-          stepDelayMs: cfg.step_delay_ms
-        })
-        if (!res || Number(res.code) !== 0) {
-          lines.push(`【${user.nickname || user.tjdUid || '账号'}】${getMessage('community.task_failed', {
-            game: game.name,
-            message: summarizeApiError(res)
-          })}`)
-          continue
-        }
-
-        const data = res.data || {}
-        lines.push(`【${user.nickname || user.tjdUid || '账号'}】${getMessage('community.task_start', {
-          game: game.name,
-          taskId: data.taskId || '',
-          status: data.status || ''
-        })}`)
-
-        const final = await this.pollTask(user, gameCode, data.taskId)
-        if (final) lines.push(final)
-      }
-
-      await this.reply(lines.join('\n'))
-      return true
-    })
-  }
-
-  async communitySignAll() {
-    return withSignLock(this, '塔吉多社区签到', async () => {
-      const users = await this.getUsers()
-      if (users.length === 0) return true
-
-      await this.reply(getMessage('community.sign_wait', { game: '塔吉多' }))
-      const cfg = this.getCommunityConfig()
-      const lines = []
-      for (const user of users) {
-        const result = await signAllCommunities(user, cfg)
-        const title = `【${user.nickname || user.tjdUid || '账号'}】`
-        lines.push(title)
-        lines.push(...result.lines)
-      }
-
-      await this.reply(lines.join('\n'))
-      return true
-    })
-  }
-
-  async pollTask(user, gameCode, taskId) {
-    if (!taskId) return ''
-    const game = GAME[gameCode]
-    const cfg = this.getCommunityConfig()
-    const times = Math.max(0, Number(cfg.poll_times ?? 36))
-    const interval = Math.max(1000, Number(cfg.poll_interval_ms ?? 5000))
-
-    let latest = null
-    for (let i = 0; i < times; i++) {
-      await sleep(interval)
-      latest = await user.tjdReq.getData('community_task_status', { gameCode, taskId })
-      if (!latest || Number(latest.code) !== 0) {
-        return getMessage('community.task_failed', { game: game.name, message: summarizeApiError(latest) })
-      }
-      if (latest.data?.completed) break
-    }
-
-    const data = latest?.data
-    if (!data) return ''
-    if (!data.completed) {
-      return getMessage('community.task_running', {
-        game: game.name,
-        status: data.status || 'running',
-        taskId
-      })
-    }
-    if (data.success === false || data.status === 'failed') {
-      return getMessage('community.task_failed', { game: game.name, message: data.message || '失败' })
-    }
-    return getMessage('community.task_done', { game: game.name, message: data.message || '完成' })
-  }
-
-  async tajiduoCommunitySign() {
-    return this.communitySignAll()
-  }
-
-  async huantaCommunitySign() {
-    return this.communitySign('huanta')
-  }
-
-  async yihuanCommunitySign() {
-    return this.communitySign('yihuan')
   }
 
   async communityState(gameCode) {

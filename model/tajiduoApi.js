@@ -11,6 +11,13 @@ function queryString(data = {}, keys = Object.keys(data)) {
   return params.toString()
 }
 
+function signAllBody(data = {}) {
+  const body = {}
+  if (data.roles) body.roles = data.roles
+  if (data.signGameIds) body.signGameIds = data.signGameIds
+  return body
+}
+
 export default class TaJiDuoApi {
   constructor() {
     this.commonConfig = setting.getConfig('common') || {}
@@ -210,7 +217,10 @@ export default class TaJiDuoApi {
       sign_game: {
         url: `${baseUrl}/api/v1/games/${game}/sign/game`,
         method: 'post',
-        body: { roleId: data.roleId }
+        body: {
+          roleId: data.roleId,
+          ...(data.signGameIds ? { signGameIds: data.signGameIds } : {})
+        }
       },
       sign_resign: {
         url: `${baseUrl}/api/v1/games/${game}/sign/resign`,
@@ -218,35 +228,9 @@ export default class TaJiDuoApi {
         body: { roleId: data.roleId }
       },
       sign_all: {
-        url: `${baseUrl}/api/v1/games/${game}/sign/all`,
+        url: game ? `${baseUrl}/api/v1/games/${game}/sign/all` : `${baseUrl}/api/v1/games/sign/all`,
         method: 'post',
-        body: data.roles ? { roles: data.roles } : {}
-      },
-      huanta_sign_all: {
-        url: `${baseUrl}/api/v1/games/huanta/sign/all`,
-        method: 'post',
-        body: data.roles ? { roles: data.roles } : {}
-      },
-      yihuan_sign_all: {
-        url: `${baseUrl}/api/v1/games/yihuan/sign/all`,
-        method: 'post',
-        body: data.roles ? { roles: data.roles } : {}
-      },
-      sign_app: {
-        url: `${baseUrl}/api/v1/games/${game}/sign/app`,
-        method: 'post',
-        body: {}
-      },
-      community_sign_all: {
-        url: `${baseUrl}/api/v1/games/${game}/community/sign/all`,
-        method: 'post',
-        body: {
-          actionDelayMs: data.actionDelayMs ?? 3000,
-          stepDelayMs: data.stepDelayMs ?? 8000
-        }
-      },
-      community_task_status: {
-        url: `${baseUrl}/api/v1/games/${game}/community/sign/tasks/${encodeURIComponent(data.taskId || '')}`
+        body: signAllBody(data)
       },
       community_sign_state: {
         url: `${baseUrl}/api/v1/games/${game}/community/sign/state`
@@ -260,16 +244,6 @@ export default class TaJiDuoApi {
       },
       community_exp_records: {
         url: `${baseUrl}/api/v1/games/${game}/community/exp/records`
-      },
-      all_community_sign: {
-        url: `${baseUrl}/api/v1/games/community/sign/all`,
-        method: 'post',
-        body: {
-          gameCodes: data.gameCodes,
-          actionDelayMs: data.actionDelayMs ?? 3000,
-          stepDelayMs: data.stepDelayMs ?? 8000,
-          betweenCommunitiesMs: data.betweenCommunitiesMs ?? 15000
-        }
       },
       all_community_task_status: {
         url: `${baseUrl}/api/v1/games/community/sign/tasks/${encodeURIComponent(data.taskId || '')}`

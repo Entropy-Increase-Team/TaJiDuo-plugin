@@ -1,4 +1,4 @@
-/** 锅巴配置：基础配置、网页登录与社区任务 */
+/** 锅巴配置：基础配置与网页登录 */
 export default function getCommonSchemas() {
   return [
     {
@@ -69,70 +69,6 @@ export default function getCommonSchemas() {
       component: 'Input',
       componentProps: {
         placeholder: 'http://127.0.0.1:25188'
-      }
-    },
-    {
-      component: 'Divider',
-      label: '社区任务'
-    },
-    {
-      field: 'community_task.action_delay_ms',
-      label: '动作间隔',
-      bottomHelpMessage: '社区任务单个动作之间的等待时间，单位：毫秒',
-      component: 'InputNumber',
-      componentProps: {
-        min: 0,
-        addonAfter: 'ms'
-      }
-    },
-    {
-      field: 'community_task.step_delay_ms',
-      label: '步骤间隔',
-      bottomHelpMessage: '社区任务步骤之间的等待时间，单位：毫秒',
-      component: 'InputNumber',
-      componentProps: {
-        min: 0,
-        addonAfter: 'ms'
-      }
-    },
-    {
-      field: 'community_task.between_communities_ms',
-      label: '双社区间隔',
-      bottomHelpMessage: '执行「tjd社区签到」时，幻塔与异环社区之间的等待时间',
-      component: 'InputNumber',
-      componentProps: {
-        min: 0,
-        addonAfter: 'ms'
-      }
-    },
-    {
-      field: 'community_task.poll_times',
-      label: '轮询次数',
-      bottomHelpMessage: '单游戏社区任务状态查询次数',
-      component: 'InputNumber',
-      componentProps: {
-        min: 0,
-        addonAfter: '次'
-      }
-    },
-    {
-      field: 'community_task.poll_interval_ms',
-      label: '轮询间隔',
-      bottomHelpMessage: '社区任务状态查询间隔，单位：毫秒',
-      component: 'InputNumber',
-      componentProps: {
-        min: 1000,
-        addonAfter: 'ms'
-      }
-    },
-    {
-      field: 'community_task.batch_poll_times',
-      label: '双社区轮询次数',
-      bottomHelpMessage: '可选。为空时默认使用轮询次数的 3 倍',
-      component: 'InputNumber',
-      componentProps: {
-        min: 0,
-        addonAfter: '次'
       }
     }
   ]
