@@ -29,6 +29,48 @@
                 linear-gradient(180deg, #0a1628 0%, #071015 40%, #0d1a2d 100%);
         }
 
+        .page.has-bg {
+            background: none;
+        }
+
+        .bg-layer {
+            display: none;
+        }
+
+        .page.has-bg .bg-layer {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .page.has-bg .bg-layer img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+            filter: brightness(0.55) saturate(1.2) blur(3px);
+        }
+
+        .page.has-bg .bg-layer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(7, 16, 21, 0.15) 0%, rgba(7, 16, 21, 0.55) 100%);
+        }
+
+        .page.has-bg>*:not(.bg-layer) {
+            position: relative;
+            z-index: 1;
+        }
+
         .page::before {
             content: '';
             position: absolute;
@@ -48,6 +90,47 @@
             border-radius: 12px;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(4px);
+        }
+
+        .page.has-bg .card {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.10);
+            backdrop-filter: none;
+            box-shadow: none;
+        }
+
+        .page.has-bg .basic-item {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .page.has-bg .prop-row {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.06);
+        }
+
+        .page.has-bg .weapon-block {
+            background: transparent;
+            border-color: rgba(255, 215, 0, 0.12);
+        }
+
+        .page.has-bg .weapon-stat {
+            background: transparent;
+        }
+
+        .page.has-bg .equip-card {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .suit-block {
+            background: rgba(0, 180, 220, 0.04);
+            border-color: rgba(0, 180, 220, 0.10);
+        }
+
+        .page.has-bg .suit-block {
+            background: transparent;
+            border-color: rgba(0, 180, 220, 0.12);
         }
 
         .card::before {
@@ -238,7 +321,12 @@
 </head>
 
 <body>
-    <div class="page">
+    <div class="page{{if bgImage}} has-bg{{/if}}">
+        {{if bgImage}}
+        <div class="bg-layer">
+            <img src="{{pluResPath}}{{bgImage}}" alt="">
+        </div>
+        {{/if}}
 
         <div class="card header-card">
             <div class="char-name">{{character.name || character.id || '未知角色'}}</div>
@@ -341,7 +429,8 @@
                     <div class="weapon-stat">星级: <strong>{{character.fork.slev || '-'}}</strong></div>
                     {{if character.fork.buffName}}
                     <div class="weapon-stat" style="grid-column: 1 / -1;">效果:
-                        <strong>{{character.fork.buffName}}</strong></div>
+                        <strong>{{character.fork.buffName}}</strong>
+                    </div>
                     {{/if}}
                 </div>
                 {{if character.fork.properties && character.fork.properties.length > 0}}
@@ -366,8 +455,7 @@
                 <div class="bar"></div>
                 <div class="title">驱动套装</div>
             </div>
-            <div class="weapon-block"
-                style="background: rgba(0, 180, 220, 0.04); border-color: rgba(0, 180, 220, 0.10);">
+            <div class="weapon-block suit-block">
                 <div class="weapon-name" style="color: #00d4ff;">{{character.suit.name || character.suit.id || '未装备'}}
                 </div>
                 <div class="weapon-stats">

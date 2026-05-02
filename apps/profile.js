@@ -1,4 +1,9 @@
 import TaJiDuoUser, { addOrUpdateAccount } from '../model/tajiduoUser.js'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const yihuanImgDir = path.resolve(__dirname, '../resources/yihuan/img/character')
 import {
   compactLine,
   formatTime,
@@ -192,6 +197,25 @@ function areaTotalLine(item = {}) {
   const progress = item.progress ?? 0
   const total = item.total ?? 0
   return `${item.name || item.id || '未命名'} | ${progress} | ${total} | ${percentLabel(progress, total)}`
+}
+
+const imgExts = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp'])
+
+function pickCharacterBg(charName = '') {
+  const candidates = [charName, 'default']
+  for (const name of candidates) {
+    if (!name) continue
+    const dir = path.join(yihuanImgDir, name)
+    try {
+      const files = fs.readdirSync(dir)
+      const images = files.filter(f => imgExts.has(path.extname(f).toLowerCase()))
+      if (images.length > 0) {
+        const picked = images[Math.floor(Math.random() * images.length)]
+        return `yihuan/img/character/${name}/${picked}`
+      }
+    } catch { }
+  }
+  return ''
 }
 
 function characterSummary(item = {}) {
@@ -765,7 +789,8 @@ export class profile extends plugin {
       character,
       role,
       properties,
-      itemsCount: items.length
+      itemsCount: items.length,
+      bgImage: pickCharacterBg(character.name || character.id)
     }, `异环${character.name || character.id}面板`)
 
     if (renderSuccess) {
