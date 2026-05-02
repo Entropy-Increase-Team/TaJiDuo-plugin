@@ -459,6 +459,37 @@ export class profile extends plugin {
     return tjdUser
   }
 
+  async renderYihuanImage(template, data, title = '异环查询') {
+    if (!this.e?.runtime?.render) {
+      logger.warn(`[TaJiDuo-plugin][图片渲染] e.runtime.render 不可用，回退到文本模式`)
+      return false
+    }
+
+    const renderData = {
+      ...data,
+      enumLabel,
+      percentLabel,
+      isOwned,
+      pageTitle: title,
+      saveId: `yihuan_${template}`
+    }
+
+    try {
+      const base64 = await this.e.runtime.render('TaJiDuo-plugin', `yihuan/${template}`, renderData, {
+        retType: 'base64'
+      })
+      if (base64) {
+        await this.e.reply(base64)
+        return true
+      }
+      logger.warn(`[TaJiDuo-plugin][图片渲染] ${template} 渲染返回空结果，回退到文本模式`)
+      return false
+    } catch (error) {
+      logger.error(`[TaJiDuo-plugin][图片渲染] ${template} 渲染失败:`, error)
+      return false
+    }
+  }
+
   async profile() {
     const tjdUser = await this.getCurrentUser()
     if (!tjdUser) return true
@@ -591,6 +622,22 @@ export class profile extends plugin {
     const vehicle = data.vehicle || {}
     const characters = filterByQuery(toArray(data.characters), resolved.query)
     const uid = data.roleid || data.roleId || data.uid || role?.roleId
+
+    const renderSuccess = await this.renderYihuanImage('role-home', {
+      data,
+      role,
+      achieve,
+      estate,
+      vehicle,
+      characters,
+      uid,
+      query: resolved.query
+    }, `异环角色主页：${data.rolename || role?.roleName || uid || '异环'}`)
+
+    if (renderSuccess) {
+      return true
+    }
+
     const lines = [
       `异环角色主页：${data.rolename || role?.roleName || uid || '异环'}${queryLabel(resolved.query)}`,
       compactLine('UID', uid),
@@ -709,6 +756,22 @@ export class profile extends plugin {
       return true
     }
 
+    const properties = toArray(character.properties).map(prop => ({
+      name: prop.name || prop.id || '未命名',
+      value: prop.value ?? prop.val ?? prop.num ?? ''
+    })).slice(0, 30)
+
+    const renderSuccess = await this.renderYihuanImage('character-panel', {
+      character,
+      role,
+      properties,
+      itemsCount: items.length
+    }, `异环${character.name || character.id}面板`)
+
+    if (renderSuccess) {
+      return true
+    }
+
     const messages = buildYihuanPanelMessages(character, role)
     if (items.length > 1) {
       messages[0] += `\n匹配到 ${items.length} 个结果，已展示：${character.name || character.id}`
@@ -736,6 +799,24 @@ export class profile extends plugin {
 
     const data = dataBody(res)
     const detail = filterByQuery(toArray(data.detail), resolved.query)
+
+    const detailForRender = detail.map(item => {
+      const p = Number(item.progress) || 0
+      const t = Number(item.total) || 0
+      return { ...item, pctWidth: t > 0 ? Math.min(100, (p / t) * 100) : 0 }
+    })
+
+    const renderSuccess = await this.renderYihuanImage('achieve', {
+      data,
+      role,
+      detail: detailForRender,
+      query: resolved.query
+    }, `异环成就：${role.roleName || role.roleId}`)
+
+    if (renderSuccess) {
+      return true
+    }
+
     const lines = [
       `异环成就：${role.roleName || role.roleId}${queryLabel(resolved.query)}`,
       compactLine('总进度', `${data.achievementCnt ?? 0}/${data.total ?? 0}`),
@@ -776,6 +857,23 @@ export class profile extends plugin {
     }
 
     const items = filterByQuery(toArray(dataBody(res)), resolved.query)
+
+    const itemsForRender = items.map(item => {
+      const p = Number(item.progress) || 0
+      const t = Number(item.total) || 0
+      return { ...item, pctWidth: t > 0 ? Math.min(100, (p / t) * 100) : 0 }
+    })
+
+    const renderSuccess = await this.renderYihuanImage('area-progress', {
+      role,
+      items: itemsForRender,
+      query: resolved.query
+    }, `异环区域探索：${role.roleName || role.roleId}`)
+
+    if (renderSuccess) {
+      return true
+    }
+
     const lines = [`异环区域探索：${role.roleName || role.roleId}${queryLabel(resolved.query)}`]
     if (items.length > 0) lines.push('区域 | 进度 | 总数 | 完成率')
     for (const item of items) {
@@ -807,6 +905,19 @@ export class profile extends plugin {
     const allDetail = toArray(data.detail)
     const detail = filterByQuery(allDetail, resolved.query)
     const owned = countOwned(detail)
+
+    const renderSuccess = await this.renderYihuanImage('real-estate', {
+      role,
+      data,
+      detail,
+      owned,
+      total: resolved.query ? detail.length : allDetail.length
+    }, `异环房产：${role.roleName || role.roleId}`)
+
+    if (renderSuccess) {
+      return true
+    }
+
     const lines = [
       `异环房产：${role.roleName || role.roleId}${queryLabel(resolved.query)}`,
       compactLine('拥有', `${owned}/${resolved.query ? detail.length : allDetail.length}`)
@@ -839,6 +950,18 @@ export class profile extends plugin {
     const data = dataBody(res)
     const allDetail = toArray(data.detail)
     const detail = filterByQuery(allDetail, resolved.query)
+
+    const renderSuccess = await this.renderYihuanImage('vehicles', {
+      role,
+      data,
+      detail,
+      owned: data.ownCnt ?? countOwned(allDetail),
+      total: data.total ?? allDetail.length
+    }, `异环载具：${role.roleName || role.roleId}`)
+
+    if (renderSuccess) {
+      return true
+    }
 
     const lines = [`异环载具：${role.roleName || role.roleId}${queryLabel(resolved.query)}`]
     if (resolved.query) {

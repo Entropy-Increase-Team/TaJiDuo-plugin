@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="724, initial-scale=1">
+    <title>异环角色面板</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            width: 724px;
+            min-height: 100vh;
+            background: #071015;
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            color: #e0e0e0;
+        }
+
+        .page {
+            position: relative;
+            padding: 20px;
+            background:
+                radial-gradient(ellipse at 20% 0%, rgba(0, 180, 220, 0.12) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 100%, rgba(120, 80, 220, 0.10) 0%, transparent 50%),
+                linear-gradient(180deg, #0a1628 0%, #071015 40%, #0d1a2d 100%);
+        }
+
+        .page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #00b4dc, #7c50dc, #ff6b9d);
+        }
+
+        .card {
+            position: relative;
+            margin-bottom: 16px;
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(14, 22, 36, 0.85), rgba(10, 16, 28, 0.92));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(4px);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20px;
+            right: 20px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(0, 180, 220, 0.4), transparent);
+        }
+
+        .header-card {
+            text-align: center;
+            padding: 28px 20px;
+        }
+
+        .char-name {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #00d4ff, #7c6fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+
+        .char-subtitle {
+            margin-top: 6px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .basic-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .basic-item {
+            text-align: center;
+            padding: 10px 4px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .basic-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.45);
+            margin-bottom: 4px;
+        }
+
+        .basic-value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .section-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 14px;
+        }
+
+        .section-head .bar {
+            width: 4px;
+            height: 20px;
+            border-radius: 2px;
+            background: linear-gradient(180deg, #00d4ff, #7c6fff);
+        }
+
+        .section-head .title {
+            font-size: 20px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .prop-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .prop-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .prop-name {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .prop-val {
+            color: #fff;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .skill-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .skill-tag {
+            padding: 6px 16px;
+            background: rgba(0, 180, 220, 0.10);
+            border: 1px solid rgba(0, 180, 220, 0.25);
+            border-radius: 20px;
+            font-size: 14px;
+            color: #7ce8ff;
+        }
+
+        .weapon-block {
+            padding: 16px;
+            background: rgba(255, 215, 0, 0.04);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 215, 0, 0.10);
+        }
+
+        .weapon-name {
+            font-size: 20px;
+            font-weight: 800;
+            color: #ffd700;
+            margin-bottom: 10px;
+        }
+
+        .weapon-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .weapon-stat {
+            padding: 6px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 4px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.75);
+        }
+
+        .weapon-stat strong {
+            color: #ffd700;
+        }
+
+        .equip-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .equip-card {
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .equip-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #00d4ff;
+            margin-bottom: 6px;
+        }
+
+        .equip-detail {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.65);
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 12px 0 4px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+
+        <div class="card header-card">
+            <div class="char-name">{{character.name || character.id || '未知角色'}}</div>
+            <div class="char-subtitle">异环角色面板{{if role && role.roleName}} · {{role.roleName}}{{/if}}</div>
+            <div class="basic-grid">
+                <div class="basic-item">
+                    <div class="basic-label">等级</div>
+                    <div class="basic-value">{{character.alev || '-'}}</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">属性</div>
+                    <div class="basic-value">{{enumLabel(character.elementType) || '-'}}</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">阶段</div>
+                    <div class="basic-value">{{character.slev !== undefined ? character.slev : '-'}}</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">觉醒</div>
+                    <div class="basic-value">{{character.awakenLev !== undefined ? character.awakenLev : '-'}}</div>
+                </div>
+                <div class="basic-item">
+                    <div class="basic-label">好感</div>
+                    <div class="basic-value">{{character.likeabilitylev || '-'}}</div>
+                </div>
+            </div>
+        </div>
+
+        {{if character.awakenEffect && character.awakenEffect.length > 0}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">觉醒效果</div>
+            </div>
+            <div class="skill-wrap">
+                {{each character.awakenEffect effect}}
+                <div class="skill-tag">{{effect}}</div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{if properties && properties.length > 0}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">面板属性</div>
+            </div>
+            <div class="prop-grid">
+                {{each properties prop}}
+                <div class="prop-row">
+                    <span class="prop-name">{{prop.name}}</span>
+                    <span class="prop-val">{{prop.value}}</span>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{if character.skills && character.skills.length > 0}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">战斗技能</div>
+            </div>
+            <div class="skill-wrap">
+                {{each character.skills skill}}
+                <div class="skill-tag">{{skill.name}} Lv.{{skill.level}}</div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{if character.citySkills && character.citySkills.length > 0}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">城市技能</div>
+            </div>
+            <div class="skill-wrap">
+                {{each character.citySkills skill}}
+                <div class="skill-tag">{{skill.name}} Lv.{{skill.level}}</div>
+                {{/each}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{if character.fork}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">弧盘 / 武器</div>
+            </div>
+            <div class="weapon-block">
+                <div class="weapon-name">{{character.fork.name || character.fork.id || '未装备'}}</div>
+                <div class="weapon-stats">
+                    <div class="weapon-stat">品质: <strong>{{enumLabel(character.fork.quality) || '-'}}</strong></div>
+                    <div class="weapon-stat">等级: <strong>{{character.fork.alev || '-'}}</strong></div>
+                    <div class="weapon-stat">突破: <strong>{{character.fork.blev || '-'}}</strong></div>
+                    <div class="weapon-stat">星级: <strong>{{character.fork.slev || '-'}}</strong></div>
+                    {{if character.fork.buffName}}
+                    <div class="weapon-stat" style="grid-column: 1 / -1;">效果:
+                        <strong>{{character.fork.buffName}}</strong></div>
+                    {{/if}}
+                </div>
+                {{if character.fork.properties && character.fork.properties.length > 0}}
+                <div style="margin-top: 12px;">
+                    <div class="prop-grid">
+                        {{each character.fork.properties prop}}
+                        <div class="prop-row">
+                            <span class="prop-name">{{prop.name}}</span>
+                            <span class="prop-val">{{prop.value}}</span>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+
+        {{if character.suit}}
+        <div class="card">
+            <div class="section-head">
+                <div class="bar"></div>
+                <div class="title">驱动套装</div>
+            </div>
+            <div class="weapon-block"
+                style="background: rgba(0, 180, 220, 0.04); border-color: rgba(0, 180, 220, 0.10);">
+                <div class="weapon-name" style="color: #00d4ff;">{{character.suit.name || character.suit.id || '未装备'}}
+                </div>
+                <div class="weapon-stats">
+                    <div class="weapon-stat">激活件数: <strong style="color:#00d4ff;">{{character.suit.suitActivateNum ||
+                            0}}</strong></div>
+                    {{if character.suit.des2}}
+                    <div class="weapon-stat" style="grid-column: 1 / -1;">2件: {{character.suit.des2}}</div>
+                    {{/if}}
+                    {{if character.suit.des4}}
+                    <div class="weapon-stat" style="grid-column: 1 / -1;">4件: {{character.suit.des4}}</div>
+                    {{/if}}
+                </div>
+
+                {{if character.suit.core && character.suit.core.length > 0}}
+                <div style="margin-top: 16px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #00d4ff; margin-bottom: 10px;">核心驱动</div>
+                    <div class="equip-grid">
+                        {{each character.suit.core item idx}}
+                        <div class="equip-card">
+                            <div class="equip-title">核心驱动 {{idx + 1}}</div>
+                            <div class="equip-detail">
+                                {{if item.name}}名称: {{item.name}}<br>{{/if}}
+                                {{if item.lev !== undefined}}等级: Lv.{{item.lev}}<br>{{/if}}
+                                {{if item.mainProperties && item.mainProperties.length > 0}}
+                                主属性: {{each item.mainProperties prop}}{{prop.name}} {{prop.value}} {{/each}}<br>
+                                {{/if}}
+                                {{if item.properties && item.properties.length > 0}}
+                                副属性: {{each item.properties prop}}{{prop.name}} {{prop.value}} {{/each}}
+                                {{/if}}
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/if}}
+
+                {{if character.suit.pie && character.suit.pie.length > 0}}
+                <div style="margin-top: 16px;">
+                    <div style="font-size: 16px; font-weight: 700; color: #00d4ff; margin-bottom: 10px;">驱动件</div>
+                    <div class="equip-grid">
+                        {{each character.suit.pie item idx}}
+                        <div class="equip-card">
+                            <div class="equip-title">{{item.name || item.id || '驱动'}}</div>
+                            <div class="equip-detail">
+                                {{if item.lev !== undefined}}等级: Lv.{{item.lev}}<br>{{/if}}
+                                {{if item.mainProperties && item.mainProperties.length > 0}}
+                                主属性: {{each item.mainProperties prop}}{{prop.name}} {{prop.value}} {{/each}}<br>
+                                {{/if}}
+                                {{if item.properties && item.properties.length > 0}}
+                                副属性: {{each item.properties prop}}{{prop.name}} {{prop.value}} {{/each}}
+                                {{/if}}
+                            </div>
+                        </div>
+                        {{/each}}
+                    </div>
+                </div>
+                {{/if}}
+            </div>
+        </div>
+        {{/if}}
+
+        <div class="footer">Created By TRSS-Yunzai & TaJiDuo-plugin</div>
+    </div>
+</body>
+
+</html>

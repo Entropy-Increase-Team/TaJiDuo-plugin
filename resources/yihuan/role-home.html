@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="724, initial-scale=1">
+  <title>异环角色主页</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 724px;
+      min-height: 100vh;
+      background: #071015;
+      font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+      color: #e0e0e0;
+    }
+
+    .page {
+      position: relative;
+      padding: 20px;
+      background:
+        radial-gradient(ellipse at 20% 0%, rgba(0, 180, 220, 0.12) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(120, 80, 220, 0.10) 0%, transparent 50%),
+        linear-gradient(180deg, #0a1628 0%, #071015 40%, #0d1a2d 100%);
+    }
+
+    .page::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #00b4dc, #7c50dc, #ff6b9d);
+    }
+
+    .card {
+      position: relative;
+      margin-bottom: 16px;
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(14, 22, 36, 0.85), rgba(10, 16, 28, 0.92));
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(4px);
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 20px;
+      right: 20px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0, 180, 220, 0.4), transparent);
+    }
+
+    .header-card {
+      text-align: center;
+      padding: 28px 20px;
+    }
+
+    .page-title {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, #00d4ff, #7c6fff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .page-subtitle {
+      margin-top: 6px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .uid-line {
+      margin-top: 4px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.35);
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .overview-item {
+      text-align: center;
+      padding: 12px 4px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .overview-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 4px;
+    }
+
+    .overview-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #00d4ff;
+    }
+
+    .overview-value.gold {
+      color: #ffd700;
+    }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .section-head .bar {
+      width: 4px;
+      height: 20px;
+      border-radius: 2px;
+      background: linear-gradient(180deg, #00d4ff, #7c6fff);
+    }
+
+    .section-head .title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .char-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+    }
+
+    .char-card {
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .char-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .char-stat {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      padding: 2px 0;
+    }
+
+    .char-stat .label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .char-stat .val {
+      color: #7ce8ff;
+      font-weight: 600;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .mini-item {
+      text-align: center;
+      padding: 12px 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .mini-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.45);
+      margin-bottom: 4px;
+    }
+
+    .mini-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #ffd700;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 12px 0 4px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <div class="card header-card">
+      <div class="page-title">异环角色主页</div>
+      <div class="page-subtitle">{{role.roleName || role.roleId || '异环'}}</div>
+      <div class="uid-line">UID: {{uid || '-'}}</div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div class="bar"></div>
+        <div class="title">总览</div>
+      </div>
+      <div class="overview-grid">
+        <div class="overview-item">
+          <div class="overview-label">等级</div>
+          <div class="overview-value">{{data.lev || '-'}}</div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">世界等级</div>
+          <div class="overview-value">{{data.worldlevel || '-'}}</div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">登录天数</div>
+          <div class="overview-value">{{data.roleloginDays || 0}}</div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">角色数量</div>
+          <div class="overview-value">{{data.charidCnt || 0}}</div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">成就进度</div>
+          <div class="overview-value gold">{{achieve.achievementCnt || 0}}/{{achieve.total || 0}}</div>
+        </div>
+        <div class="overview-item">
+          <div class="overview-label">财富等级</div>
+          <div class="overview-value gold">{{data.tycoonLevel || '-'}}</div>
+        </div>
+      </div>
+    </div>
+
+    {{if estate && (estate.showName || estate.total)}}
+    <div class="card">
+      <div class="section-head">
+        <div class="bar"></div>
+        <div class="title">房产</div>
+      </div>
+      <div class="mini-grid">
+        <div class="mini-item">
+          <div class="mini-label">展示房产</div>
+          <div class="mini-value">{{estate.showName || '暂无'}}</div>
+        </div>
+        <div class="mini-item">
+          <div class="mini-label">房产总数</div>
+          <div class="mini-value">{{estate.total || 0}}</div>
+        </div>
+      </div>
+    </div>
+    {{/if}}
+
+    {{if vehicle && (vehicle.ownCnt || vehicle.total || vehicle.showName)}}
+    <div class="card">
+      <div class="section-head">
+        <div class="bar"></div>
+        <div class="title">载具</div>
+      </div>
+      <div class="mini-grid">
+        <div class="mini-item">
+          <div class="mini-label">拥有数量</div>
+          <div class="mini-value">{{vehicle.ownCnt || 0}}/{{vehicle.total || 0}}</div>
+        </div>
+        <div class="mini-item">
+          <div class="mini-label">展示载具</div>
+          <div class="mini-value">{{vehicle.showName || '暂无'}}</div>
+        </div>
+      </div>
+    </div>
+    {{/if}}
+
+    {{if characters && characters.length > 0}}
+    <div class="card">
+      <div class="section-head">
+        <div class="bar"></div>
+        <div class="title">角色列表</div>
+      </div>
+      <div class="char-grid">
+        {{each characters char}}
+        <div class="char-card">
+          <div class="char-name">{{char.name || char.id}}</div>
+          <div class="char-stat"><span class="label">等级</span><span class="val">{{char.alev || '-'}}</span></div>
+          <div class="char-stat"><span class="label">属性</span><span class="val">{{enumLabel(char.elementType) ||
+              '-'}}</span></div>
+          <div class="char-stat"><span class="label">阶段</span><span class="val">{{char.slev !== undefined ? char.slev :
+              '-'}}</span></div>
+          <div class="char-stat"><span class="label">觉醒</span><span class="val">{{char.awakenLev !== undefined ?
+              char.awakenLev : '-'}}</span></div>
+        </div>
+        {{/each}}
+      </div>
+    </div>
+    {{/if}}
+
+    <div class="footer">Created By TRSS-Yunzai & TaJiDuo-plugin</div>
+  </div>
+</body>
+
+</html>
