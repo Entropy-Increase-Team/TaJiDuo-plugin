@@ -4,4 +4,5 @@ config/*.yaml
 *.log
 package-lock.json
 pnpm-lock.yaml
+tmp
 yarn.lock

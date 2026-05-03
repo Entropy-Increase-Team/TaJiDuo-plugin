@@ -15,12 +15,6 @@
 - 当前版本：`0.1.1`
 - 默认后端：`https://tajiduo.shallow.ink`
 - 测试 API Key：`tjd-8FtI7adTkMHMjZaE`
-- 支持 Guoba-Plugin 图形化配置
-- 支持网页登录与短信验证码登录
-- 支持同一平台用户绑定多个 TaJiDuo 账号
-- 支持幻塔档案、异环角色列表、主页与面板、聚合签到、社区任务状态、社区等级
-- 支持塔塔币、商城商品、兑换码、收入与消耗记录查询
-- 支持主人命令一键更新插件
 
 本插件依赖 TaJiDuo 后端接口。使用前请先在 `config/common.yaml` 中填写可用的 `api_key`。
 官方反馈群聊: 1090940860
@@ -260,6 +254,7 @@ plugins/TaJiDuo-plugin
 - TaJiDuo API 后端与文档维护者
 - Yunzai 系列机器人框架
 - 幻塔、异环相关官方数据来源
+- 渲染模板参考早柚核心 [NTEUID](https://github.com/tyql688/NTEUID)
 
 ## 开源协议
 

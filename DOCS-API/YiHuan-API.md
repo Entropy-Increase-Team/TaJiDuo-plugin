@@ -75,6 +75,7 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET` | `/api/v1/games/yihuan/real-estate` | Query：`roleId` 必填 | `data`、`upstream` |
 | `GET` | `/api/v1/games/yihuan/vehicles` | Query：`roleId` 必填 | `data`、`upstream` |
 | `GET` | `/api/v1/games/yihuan/team` | 无 | `data`、`upstream` |
+| `GET` | `/api/v1/games/yihuan/team/recommendations` | 无 | `data`、`upstream` |
 | `GET` | `/api/v1/games/yihuan/sign/state` | 无 | `gameId`、`day`、`days`、`month`、`reSignCnt`、`todaySign` |
 | `GET` | `/api/v1/games/yihuan/sign/rewards` | Query：`roleId` 可选 | `gameId`、`roleId`、`items` |
 | `GET` | `/api/v1/games/yihuan/sign/resign-info` | 无 | `gameId`、`coin`、`cost`、`reSignCnt`、`reSignLimit`、`todaySign` |
@@ -561,6 +562,51 @@ GET /api/v1/games/yihuan/vehicles?roleId=214075351008
 
 ```http
 GET /api/v1/games/yihuan/team
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "id": "team_1",
+        "name": "火系爆发队",
+        "icon": "https://webstatic.tajiduo.com/bbs/pic/team.png",
+        "desc": "适合快速清场",
+        "imgs": [
+          "https://webstatic.tajiduo.com/bbs/pic/player_003_256.png"
+        ]
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/yihuan/team/recommendations`
+
+用途：匿名获取异环配队推荐列表。
+
+说明：
+
+- 该接口和 `/api/v1/games/yihuan/team` 调用同一个上游
+- 不要求 `X-Framework-Token`
+- 仍需要有效 `X-API-Key`
+- 适合公告、攻略、配队类无需用户登录态的场景
+
+请求示例：
+
+```http
+GET /api/v1/games/yihuan/team/recommendations
 ```
 
 响应示例：

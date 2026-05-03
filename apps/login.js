@@ -260,9 +260,10 @@ export class login extends plugin {
   async switchAccount() {
     const index = trimMsg(this.e).match(/(\d+)$/)?.[1]
     const accounts = await getUserAccounts(this.e.user_id)
-    const account = accounts[Number(index) - 1]
+    const targetIndex = index ? Number(index) : (accounts.length > 1 ? 2 : 1)
+    const account = accounts[targetIndex - 1]
     if (!account) {
-      await this.reply(getMessage('login.account_missing', { index }))
+      await this.reply(getMessage('login.account_missing', { index: index || targetIndex }))
       return true
     }
 
@@ -272,9 +273,9 @@ export class login extends plugin {
       await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
       return true
     }
-    await switchAccount(this.e.user_id, index)
+    await switchAccount(this.e.user_id, targetIndex)
     await this.syncBackendAccounts(account)
-    await this.reply(getMessage('login.account_switched', { index, name: displayName(account) }))
+    await this.reply(getMessage('login.account_switched', { index: targetIndex, name: displayName(account) }))
     return true
   }
 

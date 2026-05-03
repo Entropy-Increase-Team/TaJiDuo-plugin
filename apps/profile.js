@@ -1,4 +1,6 @@
 import TaJiDuoUser, { addOrUpdateAccount } from '../model/tajiduoUser.js'
+import { resolveYihuanAlias } from '../utils/yihuanAlias.js'
+import { randomCardLongId } from '../utils/yihuanRender.js'
 import {
   compactLine,
   formatTime,
@@ -32,22 +34,6 @@ function getCommandArgs(text = '', gameCode = 'yihuan', commandPattern = '') {
   return cleanSpaces(String(text || '').trim().replace(new RegExp(`^[/#]?${prefix}\\s*${commandPattern}`, 'i'), ''))
 }
 
-function getHuantaRecordType(text = '') {
-  const value = String(text || '')
-  if (/武器|type\s*1|类型\s*1|(?:^|\s)1(?:\s|$)/i.test(value)) return '1'
-  if (/拟态|type\s*2|类型\s*2|(?:^|\s)2(?:\s|$)/i.test(value)) return '2'
-  if (/时装|type\s*3|类型\s*3|(?:^|\s)3(?:\s|$)/i.test(value)) return '3'
-  if (/载具|type\s*4|类型\s*4|(?:^|\s)4(?:\s|$)/i.test(value)) return '4'
-  return '0'
-}
-
-function stripHuantaTypeWords(text = '') {
-  return cleanSpaces(String(text || '')
-    .replace(/武器|拟态|时装|载具/gi, ' ')
-    .replace(/type\s*[1-4]|类型\s*[1-4]/gi, ' ')
-    .replace(/(?:^|\s)[1-4](?=\s|$)/g, ' '))
-}
-
 function removeFirstText(text = '', value = '') {
   if (!value) return cleanSpaces(text)
   return cleanSpaces(String(text || '').replace(new RegExp(escapeRegExp(String(value)), 'i'), ' '))
@@ -67,6 +53,424 @@ function toArray(value) {
 
 function dataBody(res = {}) {
   return res.data?.data ?? res.data ?? {}
+}
+
+const YIHUAN_CDN_BASE = 'https://webstatic.tajiduo.com/bbs/yh-game-records-web-source'
+
+function yihuanCdn(path = '') {
+  return YIHUAN_CDN_BASE + '/' + String(path).replace(/^\/+/, '')
+}
+
+function qqAvatarUrl(e = {}) {
+  const userId = String(e?.user_id || Bot?.uin || '80000000')
+  return 'https://q1.qlogo.cn/g?b=qq&nk=' + encodeURIComponent(userId) + '&s=640'
+}
+
+function clampPercent(progress = 0, total = 0) {
+  const current = Number(progress ?? 0)
+  const target = Number(total ?? 0)
+  if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return 0
+  return Math.max(0, Math.min(100, Math.round((current / target) * 100)))
+}
+
+async function renderYihuanCard(e, template, payload = {}) {
+  if (!e?.runtime?.render) return false
+  try {
+    await e.runtime.render('TaJiDuo-plugin', 'yihuan/' + template, {
+      ...payload,
+      cardLongId: payload.cardLongId || randomCardLongId(),
+      avatarUrl: payload.avatarUrl || qqAvatarUrl(e),
+      footerText: payload.footerText || 'Created By Yunzai-Bot & TaJiDuo-plugin',
+      viewport: { width: payload.viewport?.width || 1080 }
+    }, {
+      scale: 1
+    })
+    return true
+  } catch (error) {
+    logger.error('[TaJiDuo-plugin][异环渲染]' + template + ' 渲染失败：' + (error?.message || error))
+    return false
+  }
+}
+
+function roleRenderBase(e, pageTitle, role = {}, uid = '') {
+  return {
+    pageTitle,
+    roleName: role.roleName || role.rolename || uid || '异环',
+    uid: uid || role.roleId || role.roleid || '',
+    roleLevel: role.lev ?? role.level ?? '',
+    avatarUrl: qqAvatarUrl(e)
+  }
+}
+
+function achievementIconUrl(id = '') {
+  return yihuanCdn('achievement/' + encodeURIComponent(id || 'explore') + '.png')
+}
+
+function areaBannerUrl(id = '') {
+  return yihuanCdn('area/wide/' + encodeURIComponent(id || '001') + '.png')
+}
+
+function areaTypeIconUrl(id = '') {
+  return yihuanCdn('area/type/' + encodeURIComponent(id || 'yushi') + '.PNG')
+}
+
+function characterAvatarUrl(id = '') {
+  return yihuanCdn('avatar/square/' + encodeURIComponent(id || '1') + '.PNG')
+}
+
+function characterDetailUrl(id = '') {
+  return yihuanCdn('character/detail/' + encodeURIComponent(id || '1') + '.png')
+}
+
+function realEstateImageUrl(id = '') {
+  return yihuanCdn('realestate/detail/' + encodeURIComponent(id || 'bigword_l_1') + '.png')
+}
+
+function furnitureImageUrl(id = '') {
+  return yihuanCdn('realestate/fdetail/' + encodeURIComponent(id || 'SF_0001') + '.png')
+}
+
+function vehicleWideImageUrl(id = '') {
+  return yihuanCdn('verhicle/wide/' + encodeURIComponent(id || 'vehicle001') + '.png')
+}
+
+function vehicleModelImageUrl(id = '') {
+  return yihuanCdn('verhicle/model/' + encodeURIComponent(id || '') + '.png')
+}
+
+function characterElementIconUrl(id = '') {
+  return yihuanCdn('character/element/' + encodeURIComponent(id || 'CHARACTER_ELEMENT_TYPE_PSYCHE') + '.PNG')
+}
+
+function characterGroupIconUrl(id = '') {
+  return yihuanCdn('character/group_black/' + encodeURIComponent(id || 'CHARACTER_GROUP_TYPE_ONE') + '.PNG')
+}
+
+function characterPropertyIconUrl(id = '') {
+  return yihuanCdn('character/property/' + encodeURIComponent(id || 'atk') + '.png')
+}
+
+function characterSkillIconUrl(id = '') {
+  return yihuanCdn('character/skill/' + encodeURIComponent(id || '') + '.png')
+}
+
+function characterCitySkillIconUrl(id = '') {
+  return yihuanCdn('character/city_skill/' + encodeURIComponent(id || '') + '.png')
+}
+
+function characterAwakenIconUrl(charId = '', effect = '') {
+  return yihuanCdn('character/awaken/' + encodeURIComponent(charId || '') + '_' + encodeURIComponent(effect || '') + '.png')
+}
+
+function weaponImageUrl(id = '') {
+  return id ? yihuanCdn('character/fork/' + encodeURIComponent(id) + '.png') : ''
+}
+
+function suitDetailImageUrl(id = '') {
+  return id ? yihuanCdn('character/suit/detail/' + encodeURIComponent(id) + '.png') : ''
+}
+
+function suitDriveImageUrl(id = '') {
+  return id ? yihuanCdn('character/suit/drive/' + encodeURIComponent(id) + '.png') : ''
+}
+
+function parseJsonArray(value = '') {
+  if (Array.isArray(value)) return value
+  try {
+    const parsed = JSON.parse(String(value || '[]'))
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function renderAchievementData(data = {}, detail = []) {
+  return {
+    achievementCnt: data.achievementCnt ?? data.achievement_cnt ?? 0,
+    total: data.total ?? 0,
+    bronzeUmdCnt: data.bronzeUmdCnt ?? data.bronze_umd_cnt ?? 0,
+    silverUmdCnt: data.silverUmdCnt ?? data.silver_umd_cnt ?? 0,
+    goldUmdCnt: data.goldUmdCnt ?? data.gold_umd_cnt ?? 0,
+    detail: detail.map((item) => ({
+      name: item.name || item.id || '未命名',
+      progress: item.progress ?? 0,
+      total: item.total ?? 0,
+      iconUrl: achievementIconUrl(item.id)
+    }))
+  }
+}
+
+function renderAreaData(items = []) {
+  return items.map((item) => ({
+    id: item.id,
+    name: item.name || item.id || '未命名',
+    progress: item.progress ?? 0,
+    total: item.total ?? 0,
+    percent: clampPercent(item.progress, item.total),
+    percentText: percentLabel(item.progress, item.total),
+    bannerUrl: areaBannerUrl(item.id),
+    detail: toArray(item.detail).map((sub) => ({
+      name: sub.name || sub.id || '未命名',
+      progress: sub.progress ?? 0,
+      total: sub.total ?? 0,
+      iconUrl: areaTypeIconUrl(sub.id)
+    }))
+  }))
+}
+
+function renderRealEstateData(items = []) {
+  return items.map((item) => ({
+    name: item.name || item.id || '未命名',
+    imageUrl: realEstateImageUrl(item.id || item.showId),
+    residents: parseJsonArray(item.chars).slice(0, 6).map((id) => characterAvatarUrl(id)),
+    furniture: toArray(item.fdetail).map((furniture) => {
+      const owned = isOwned(furniture)
+      return {
+        owned,
+        lockClass: owned ? '' : 'locked',
+        iconUrl: furnitureImageUrl(furniture.id)
+      }
+    })
+  }))
+}
+
+function renderVehicleData(items = []) {
+  return items.map((item) => ({
+    id: item.id || '',
+    name: item.name || item.id || '未命名',
+    owned: isOwned(item),
+    imageUrl: vehicleWideImageUrl(item.id || item.showId),
+    base: toArray(item.base).map((prop) => ({
+      name: prop.name || prop.id || prop.key || '属性',
+      value: prop.value ?? prop.val ?? prop.num ?? ''
+    })),
+    advanced: toArray(item.advanced).map((prop) => ({
+      name: prop.name || prop.id || prop.key || '属性',
+      value: prop.value ?? prop.val ?? prop.num ?? 0,
+      max: prop.max ?? prop.total ?? 0,
+      percent: clampPercent(prop.value ?? prop.val ?? prop.num, prop.max ?? prop.total)
+    })),
+    models: toArray(item.models).map((model) => ({
+      iconUrl: vehicleModelImageUrl(model.type || model.id)
+    }))
+  }))
+}
+
+function renderHomeData(data = {}) {
+  const achieve = data.achieveProgress || {}
+  const estate = data.realestate || {}
+  const vehicle = data.vehicle || {}
+  const areas = renderAreaData(toArray(data.areaProgress)).slice(0, 8)
+  const characters = toArray(data.characters).map((item) => ({
+    name: item.name || item.id || '角色',
+    level: item.alev ?? 0,
+    awaken: item.awakenLev ?? 0,
+    element: enumLabel(item.elementType) || '属性',
+    avatarUrl: characterDetailUrl(item.id),
+    qualityClass: item.quality === 'ITEM_QUALITY_ORANGE' ? 'quality-s' : ''
+  }))
+  return {
+    stats: [
+      { value: achieve.achievementCnt ?? 0, label: '达成成就' },
+      { value: data.tycoonLevel ?? 0, label: '大亨等级' },
+      { value: estate.ownCnt ?? 0, label: '房产数量' },
+      { value: vehicle.ownCnt ?? 0, label: '载具数量' }
+    ],
+    areas,
+    characters
+  }
+}
+
+function renderCharacterListData(items = []) {
+  return toArray(items).map((item) => {
+    const owned = isOwned(item) || !['own', 'owned', 'unlock', 'has'].some((key) => item[key] !== undefined)
+    return {
+      name: item.name || item.id || '角色',
+      awaken: item.awakenLev ?? 0,
+      avatarUrl: characterAvatarUrl(item.id),
+      ownedClass: owned ? '' : 'locked'
+    }
+  })
+}
+
+function renderRefreshLayout(count = 0) {
+  const rows = Math.max(1, Math.ceil(Number(count || 0) / 7))
+  const stageHeight = 246 + (rows - 1) * 290 + 340 + 90
+  return {
+    stageHeight,
+    refreshHeight: Math.ceil(stageHeight * (1080 / 1680))
+  }
+}
+
+function formatPanelValue(value = '') {
+  const raw = String(value ?? '').trim()
+  if (!raw) return ''
+  if (/%|[A-Za-z一-龥]/.test(raw)) return raw
+  const num = Number(raw)
+  return Number.isFinite(num) ? String(Math.round(num)) : raw
+}
+
+function qualityLetter(value = '') {
+  return {
+    ITEM_QUALITY_ORANGE: 'S',
+    ITEM_QUALITY_PURPLE: 'A',
+    ITEM_QUALITY_BLUE: 'B',
+    ITEM_QUALITY_GREEN: 'C',
+    ITEM_QUALITY_WHITE: 'N'
+  }[value] || String(value || '').replace(/^ITEM_QUALITY_/, '').slice(0, 1) || 'A'
+}
+
+const CHARACTER_PANEL_PROP_ORDER = [
+  { name: '生命值', fallback: '0' },
+  { name: '攻击力', fallback: '0' },
+  { name: '防御力', fallback: '0' },
+  { name: '暴击率', fallback: '0%' },
+  { name: '暴击伤害', fallback: '0%' },
+  { name: '充能效率', fallback: '0%' },
+  { name: '环合强度', fallback: '0' },
+  { name: '治疗加成', fallback: '0%' },
+  { name: '受治疗加成', fallback: '0%' },
+  { name: '通用伤害增强', fallback: '0%' },
+  { name: '光属性异能伤害增强', fallback: '0%' },
+  { name: '灵属性异能伤害增强', fallback: '0%' },
+  { name: '咒属性异能伤害增强', fallback: '0%' },
+  { name: '暗属性异能伤害增强', fallback: '0%' },
+  { name: '魂属性异能伤害增强', fallback: '0%' },
+  { name: '相属性异能伤害增强', fallback: '0%' },
+  { name: '心灵伤害增强', fallback: '0%' },
+  { name: '光属性异能伤害抗性', fallback: '0%' },
+  { name: '灵属性异能伤害抗性', fallback: '0%' },
+  { name: '咒属性异能伤害抗性', fallback: '0%' },
+  { name: '暗属性异能伤害抗性', fallback: '0%' },
+  { name: '魂属性异能伤害抗性', fallback: '0%' },
+  { name: '相属性异能伤害抗性', fallback: '0%' },
+  { name: '心灵伤害抗性', fallback: '0%' }
+]
+
+function normalizePropName(value = '') {
+  return String(value || '').replace(/\s+/g, '').replace(/[：:]/g, '')
+}
+
+function renderCharacterPanelProps(items = []) {
+  const props = toArray(items)
+  const used = new Set()
+  const byName = new Map()
+  for (const item of props) {
+    const name = item?.name || item?.id || ''
+    if (!name || item?.value === undefined || item?.value === '') continue
+    byName.set(normalizePropName(name), item)
+  }
+
+  const ordered = CHARACTER_PANEL_PROP_ORDER.map((def) => {
+    const item = byName.get(normalizePropName(def.name))
+    if (item) used.add(item)
+    return {
+      name: def.name,
+      value: formatPanelValue(item?.value ?? def.fallback),
+      iconUrl: characterPropertyIconUrl(item?.id || '')
+    }
+  })
+
+  const extras = props
+    .filter((item) => item?.name && item?.value !== undefined && item?.value !== '' && !used.has(item))
+    .map((item) => ({
+      name: item.name || item.id || '属性',
+      value: formatPanelValue(item.value),
+      iconUrl: characterPropertyIconUrl(item.id)
+    }))
+
+  return [...ordered, ...extras]
+}
+
+function renderPanelProps(items = [], limit = Infinity) {
+  return toArray(items)
+    .filter((item) => (item?.name || item?.id) && item?.value !== undefined && item?.value !== '')
+    .slice(0, limit)
+    .map((item) => ({
+      name: item.name || item.id || '属性',
+      value: formatPanelValue(item.value),
+      iconUrl: characterPropertyIconUrl(item.id)
+    }))
+}
+
+function renderPanelSkills(items = [], type = 'battle') {
+  const battleNames = ['普通攻击', '变轨技能', '极轨终结', '援护技', '被动技能', '被动技能']
+  return toArray(items).map((item, index) => ({
+    title: item.name || item.title || (type === 'battle' ? battleNames[index] : '城市技能'),
+    level: item.level ?? item.lev ?? 0,
+    iconUrl: type === 'city' ? characterCitySkillIconUrl(item.id) : characterSkillIconUrl(item.id)
+  }))
+}
+
+function renderForkStars(value = 0) {
+  const count = Math.max(0, Math.min(5, Number(value) || 0))
+  return Array.from({ length: 5 }, (_, index) => ({ activeClass: index < count ? 'active' : '' }))
+}
+
+function renderDriveItem(item = {}) {
+  const properties = [
+    ...renderPanelProps(item.mainProperties),
+    ...renderPanelProps(item.properties)
+  ]
+  return {
+    name: item.name || item.id || '驱动',
+    level: item.lev ?? 0,
+    iconUrl: suitDriveImageUrl(item.id),
+    properties
+  }
+}
+
+function renderCharacterPanelData(character = {}) {
+  const fork = character.fork || {}
+  const suit = character.suit || {}
+  const awakenEffects = toArray(character.awakenEffect)
+  const awaken = Number(character.awakenLev ?? 0)
+  const awakenSlots = Array.from({ length: 6 }, (_, index) => ({
+    iconUrl: index < awaken && awakenEffects[index] ? characterAwakenIconUrl(character.id, awakenEffects[index]) : '',
+    lockClass: index < awaken && awakenEffects[index] ? '' : 'locked'
+  }))
+  const coreDrives = toArray(suit.core).map((item) => ({ ...renderDriveItem(item), coreClass: 'core-drive' }))
+  const pieDrives = toArray(suit.pie).map(renderDriveItem)
+  const conditionIcons = toArray(suit.suitCondition).map((id) => ({ iconUrl: suitDetailImageUrl(id) }))
+  return {
+    character: {
+      id: character.id || '',
+      name: character.name || character.id || '角色',
+      level: character.alev ?? 0,
+      awaken,
+      likeability: character.likeabilitylev ?? 0,
+      artUrl: characterDetailUrl(character.id),
+      elementIconUrl: characterElementIconUrl(character.elementType),
+      groupIconUrl: characterGroupIconUrl(character.groupType),
+      qualityLetter: qualityLetter(character.quality),
+      qualityClass: character.quality === 'ITEM_QUALITY_PURPLE' ? 'quality-a' : 'quality-s',
+      awakenSlots,
+      properties: renderCharacterPanelProps(character.properties),
+      skills: renderPanelSkills(character.skills, 'battle'),
+      citySkills: renderPanelSkills(character.citySkills, 'city')
+    },
+    fork: {
+      name: fork.name || fork.id || '未装备',
+      level: fork.alev ?? 0,
+      breakLevel: fork.blev ?? 0,
+      starLevel: fork.slev ?? 0,
+      stars: renderForkStars(fork.slev),
+      iconUrl: weaponImageUrl(fork.id),
+      properties: renderPanelProps(fork.properties),
+      buffName: fork.buffName || '',
+      buffDesc: cleanGameText(fillTemplate(fork.buffDes, fork.lbd)) || cleanGameText(fork.des) || '暂无效果说明'
+    },
+    suit: {
+      name: suit.name || suit.id || '未装备',
+      activeNum: suit.suitActivateNum ?? 0,
+      iconUrl: suitDetailImageUrl(suit.id),
+      desc2: cleanGameText(suit.des2),
+      desc4: cleanGameText(suit.des4),
+      conditionIcons,
+      coreDrives,
+      pieDrives
+    }
+  }
 }
 
 function isOwned(item = {}) {
@@ -339,7 +743,7 @@ function queryLabel(query = '') {
 function getYihuanPanelQuery(text = '') {
   return cleanSpaces(String(text || '').trim()
     .replace(new RegExp(`^${PREFIX.yihuan}\\s*`, 'i'), '')
-    .replace(/\s*面板$/, ''))
+    .replace(/\s*(?:面板|信息|详情|面包|🍞)$/, ''))
 }
 
 function enumLabel(value = '') {
@@ -364,40 +768,16 @@ function cleanGameText(value = '') {
   return String(value || '')
     .replace(/<[^>]*>/g, '')
     .replace(/<\/>/g, '')
-    .replace(/\\r\\n|\\n|\\r/g, '\n')
-    .replace(/rn(?=[\u4e00-\u9fa5A-Za-z0-9「])/g, '\n')
-    .replace(/\n{3,}/g, '\n\n')
+    .replace(/\\r\\n|\\n|\\r/g, '')
+    .replace(/\/n|\/r/g, '')
+    .replace(/\r\n|\n|\r/g, '')
+    .replace(/([。！？；，、：）)”》])r?n(?=[\u4e00-\u9fa5A-Za-z0-9「“"《（])/g, '$1')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
 function safeSection(title, lines = []) {
   return [title, ...lines.filter((line) => line !== undefined && line !== null && String(line).trim() !== '')].join('\n')
-}
-
-function getHuantaList(record = {}, type = '0') {
-  const map = {
-    1: record.weaponinfo || record.weaponInfo || [],
-    2: record.imitationlist || record.imitationList || [],
-    3: record.dressfashionlist || record.dressFashionList || [],
-    4: record.mountlist || record.mountList || []
-  }
-  if (type !== '0') return toArray(map[type])
-  return [
-    ...toArray(map[1]),
-    ...toArray(map[2]),
-    ...toArray(map[3]),
-    ...toArray(map[4])
-  ]
-}
-
-function huantaTypeLabel(type = '0') {
-  return {
-    0: '总览',
-    1: '武器',
-    2: '拟态',
-    3: '时装',
-    4: '载具'
-  }[type] || '总览'
 }
 
 export class profile extends plugin {
@@ -413,19 +793,15 @@ export class profile extends plugin {
           fnc: 'profile'
         },
         {
-          reg: `^${PREFIX.huanta}(档案|角色数据|战绩详情)(?:\\s*.*)?$`,
-          fnc: 'huantaRoleRecord'
-        },
-        {
           reg: `^${PREFIX.yihuan}(角色主页|主页)(?:\\s*.*)?$`,
           fnc: 'yihuanHome'
         },
         {
-          reg: `^${PREFIX.yihuan}角色$`,
+          reg: `^${PREFIX.yihuan}(刷新面板|刷新面版|更新面板|更新面版|强制刷新|面板刷新|面板更新)$`,
           fnc: 'yihuanCharacters'
         },
         {
-          reg: `^${PREFIX.yihuan}\\s*.+?\\s*面板$`,
+          reg: `^${PREFIX.yihuan}\\s*.+?\\s*(?:面板|信息|详情)$`,
           fnc: 'yihuanCharacterPanel'
         },
         {
@@ -433,17 +809,17 @@ export class profile extends plugin {
           fnc: 'yihuanAchieve'
         },
         {
-          reg: `^${PREFIX.yihuan}(区域探索|探索|区域)(?:\\s*.*)?$`,
+          reg: `^${PREFIX.yihuan}(区域探索|探索详情|探索度|探索|区域)(?:\\s*.*)?$`,
           fnc: 'yihuanArea'
         },
         {
-          reg: `^${PREFIX.yihuan}(房产数据|房产)(?:\\s*.*)?$`,
+          reg: `^${PREFIX.yihuan}(房产数据|我的房产|房产)(?:\\s*.*)?$`,
           fnc: 'yihuanRealEstate'
         },
         {
-          reg: `^${PREFIX.yihuan}(载具数据|载具)(?:\\s*.*)?$`,
+          reg: `^${PREFIX.yihuan}(载具数据|我的载具|载具)(?:\\s*.*)?$`,
           fnc: 'yihuanVehicles'
-        }
+        },
       ]
     })
   }
@@ -520,58 +896,6 @@ export class profile extends plugin {
     }
   }
 
-  async huantaRoleRecord() {
-    const tjdUser = await this.getCurrentUser()
-    if (!tjdUser) return true
-
-    const text = trimMsg(this.e)
-    const args = getCommandArgs(text, 'huanta', '(?:档案|角色数据|战绩详情)')
-    const type = getHuantaRecordType(args)
-    const resolved = await this.resolveGameRole(tjdUser, 'huanta', stripHuantaTypeWords(args))
-    const role = resolved.role
-    if (!role) {
-      await this.reply(getMessage('game.roles_empty', { game: '幻塔' }))
-      return true
-    }
-
-    const res = await tjdUser.tjdReq.getData('huanta_role_record', { roleId: role.roleId, type })
-    if (!res || Number(res.code) !== 0) {
-      await this.reply(getMessage('common.request_failed', { error: summarizeApiError(res) }))
-      return true
-    }
-
-    const data = res.data || {}
-    const record = data.record || data.data || {}
-    const selected = data.selected || record.selected || ''
-    const items = filterByQuery(getHuantaList(record, type), resolved.query)
-    const lines = [
-      `幻塔档案${huantaTypeLabel(type)}：${record.rolename || record.roleName || role.roleName || role.roleId}${queryLabel(resolved.query)}`,
-      compactLine('等级', record.lev ?? role.level),
-      compactLine('服务器', record.groupname || record.serverName || role.serverName),
-      compactLine('战力', record.maxgs),
-      compactLine('当前展示', selected || getMessage('common.empty'))
-    ]
-    if (type === '0') {
-      lines.push(compactLine('武器', toArray(record.weaponinfo || record.weaponInfo).length))
-      lines.push(compactLine('拟态', toArray(record.imitationlist || record.imitationList).length))
-      lines.push(compactLine('时装', toArray(record.dressfashionlist || record.dressFashionList).length))
-      lines.push(compactLine('载具', toArray(record.mountlist || record.mountList).length))
-      if (resolved.query) {
-        for (const item of items.slice(0, 10)) {
-          lines.push(`- ${itemName(item)}${item.ID || item.id ? ` / ${item.ID || item.id}` : ''}`)
-        }
-        if (items.length === 0) lines.push(`未找到匹配：${resolved.query}`)
-      }
-    } else {
-      for (const item of items.slice(0, 10)) {
-        lines.push(`- ${itemName(item)}${item.ID || item.id ? ` / ${item.ID || item.id}` : ''}`)
-      }
-      if (items.length === 0) lines.push(resolved.query ? `未找到匹配：${resolved.query}` : getMessage('common.no_data'))
-    }
-    await this.reply(lines.join('\n'))
-    return true
-  }
-
   async yihuanHome() {
     const tjdUser = await this.getCurrentUser()
     if (!tjdUser) return true
@@ -591,6 +915,12 @@ export class profile extends plugin {
     const vehicle = data.vehicle || {}
     const characters = filterByQuery(toArray(data.characters), resolved.query)
     const uid = data.roleid || data.roleId || data.uid || role?.roleId
+    const rendered = await renderYihuanCard(this.e, 'home', {
+      ...roleRenderBase(this.e, '异环角色主页', { ...role, roleName: data.rolename || role?.roleName, lev: data.lev }, uid),
+      ...renderHomeData({ ...data, characters })
+    })
+    if (rendered) return true
+
     const lines = [
       `异环角色主页：${data.rolename || role?.roleName || uid || '异环'}${queryLabel(resolved.query)}`,
       compactLine('UID', uid),
@@ -632,6 +962,19 @@ export class profile extends plugin {
     const items = toArray(dataBody(res))
     const hasOwnedFlag = items.some((item) => ['own', 'owned', 'unlock', 'has'].some((key) => item[key] !== undefined))
     const owned = hasOwnedFlag ? countOwned(items) : items.length
+    const homeRes = await tjdUser.tjdReq.getData('yihuan_role_home', { roleId: role.roleId })
+    const home = homeRes && Number(homeRes.code) === 0 ? dataBody(homeRes) : {}
+    const uid = home.roleid || home.roleId || role.roleId
+    const rendered = await renderYihuanCard(this.e, 'characters', {
+      ...roleRenderBase(this.e, '异环角色列表', { ...role, roleName: home.rolename || role.roleName }, uid),
+      roleLevel: home.lev ?? role.level ?? 0,
+      owned,
+      total: items.length,
+      ...renderRefreshLayout(items.length),
+      characters: renderCharacterListData(items)
+    })
+    if (rendered) return true
+
     const lines = [
       `异环角色列表：${role.roleName || role.roleId}`,
       compactLine('拥有', `${owned}/${items.length}`)
@@ -682,7 +1025,7 @@ export class profile extends plugin {
     const tjdUser = await this.getCurrentUser()
     if (!tjdUser) return true
 
-    const panelQuery = getYihuanPanelQuery(trimMsg(this.e))
+    const panelQuery = await resolveYihuanAlias(getYihuanPanelQuery(trimMsg(this.e)))
     if (!panelQuery) {
       await this.reply('请写角色名，例如：yh早雾面板')
       return true
@@ -708,6 +1051,12 @@ export class profile extends plugin {
       await this.reply(`没有找到角色面板：${characterQuery}`)
       return true
     }
+
+    const rendered = await renderYihuanCard(this.e, 'character', {
+      ...roleRenderBase(this.e, `异环${character.name || character.id}面板`, role, role.roleId),
+      ...renderCharacterPanelData(character)
+    })
+    if (rendered) return true
 
     const messages = buildYihuanPanelMessages(character, role)
     if (items.length > 1) {
@@ -736,6 +1085,12 @@ export class profile extends plugin {
 
     const data = dataBody(res)
     const detail = filterByQuery(toArray(data.detail), resolved.query)
+    const rendered = await renderYihuanCard(this.e, 'achieve', {
+      ...roleRenderBase(this.e, '异环成就', role, role.roleId),
+      ...renderAchievementData(data, detail)
+    })
+    if (rendered) return true
+
     const lines = [
       `异环成就：${role.roleName || role.roleId}${queryLabel(resolved.query)}`,
       compactLine('总进度', `${data.achievementCnt ?? 0}/${data.total ?? 0}`),
@@ -776,6 +1131,12 @@ export class profile extends plugin {
     }
 
     const items = filterByQuery(toArray(dataBody(res)), resolved.query)
+    const rendered = await renderYihuanCard(this.e, 'area-progress', {
+      ...roleRenderBase(this.e, '异环区域探索', role, role.roleId),
+      areas: renderAreaData(items)
+    })
+    if (rendered) return true
+
     const lines = [`异环区域探索：${role.roleName || role.roleId}${queryLabel(resolved.query)}`]
     if (items.length > 0) lines.push('区域 | 进度 | 总数 | 完成率')
     for (const item of items) {
@@ -807,6 +1168,12 @@ export class profile extends plugin {
     const allDetail = toArray(data.detail)
     const detail = filterByQuery(allDetail, resolved.query)
     const owned = countOwned(detail)
+    const rendered = await renderYihuanCard(this.e, 'real-estate', {
+      ...roleRenderBase(this.e, '异环房产', role, role.roleId),
+      houses: renderRealEstateData(detail.filter((entry) => isOwned(entry)))
+    })
+    if (rendered) return true
+
     const lines = [
       `异环房产：${role.roleName || role.roleId}${queryLabel(resolved.query)}`,
       compactLine('拥有', `${owned}/${resolved.query ? detail.length : allDetail.length}`)
@@ -839,6 +1206,13 @@ export class profile extends plugin {
     const data = dataBody(res)
     const allDetail = toArray(data.detail)
     const detail = filterByQuery(allDetail, resolved.query)
+
+    const renderItems = resolved.query ? detail : allDetail.filter((entry) => isOwned(entry))
+    const rendered = await renderYihuanCard(this.e, 'vehicles', {
+      ...roleRenderBase(this.e, '异环载具', role, role.roleId),
+      vehicles: renderVehicleData(renderItems)
+    })
+    if (rendered) return true
 
     const lines = [`异环载具：${role.roleName || role.roleId}${queryLabel(resolved.query)}`]
     if (resolved.query) {

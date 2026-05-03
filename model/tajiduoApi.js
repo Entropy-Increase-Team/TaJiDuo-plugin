@@ -117,6 +117,26 @@ export default class TaJiDuoApi {
           platform: data.platform || 'wx_session'
         }
       },
+      community_posts_recommend: {
+        url: `${baseUrl}/api/v1/community/posts/recommend`,
+        query: queryString({
+          communityId: data.communityId ?? 2,
+          page: data.page ?? 1,
+          count: data.count ?? 20,
+          version: data.version
+        })
+      },
+      community_posts_full: {
+        url: `${baseUrl}/api/v1/community/posts/full`,
+        query: queryString({ postId: data.postId })
+      },
+      community_posts_like: {
+        url: `${baseUrl}/api/v1/community/posts/like`,
+        method: 'post',
+        body: {
+          postId: data.postId
+        }
+      },
       community_posts_share_data: {
         url: `${baseUrl}/api/v1/community/posts/share-data`,
         query: queryString({ postId: data.postId })
@@ -181,6 +201,10 @@ export default class TaJiDuoApi {
           roleId: data.roleId
         }
       },
+      role_bind_get: {
+        url: `${baseUrl}/api/v1/games/roles/bind`,
+        query: queryString({ gameId: data.gameId })
+      },
       sign_reward_records: {
         url: `${baseUrl}/api/v1/games/sign/reward-records`,
         query: queryString({ gameId: data.gameId })
@@ -190,6 +214,22 @@ export default class TaJiDuoApi {
       },
       record_card: {
         url: `${baseUrl}/api/v1/games/${game}/record-card`
+      },
+      game_sign_state: {
+        url: `${baseUrl}/api/v1/games/sign/state`,
+        query: queryString({ gameId: data.gameId })
+      },
+      game_sign_rewards: {
+        url: `${baseUrl}/api/v1/games/sign/rewards`,
+        query: queryString({ gameId: data.gameId, roleId: data.roleId })
+      },
+      game_sign_game: {
+        url: `${baseUrl}/api/v1/games/sign/game`,
+        method: 'post',
+        body: {
+          gameId: data.gameId,
+          roleId: data.roleId
+        }
       },
       huanta_role_record: {
         url: `${baseUrl}/api/v1/games/huanta/role-record`,
@@ -273,6 +313,13 @@ export default class TaJiDuoApi {
       },
       yihuan_vehicles: {
         url: `${baseUrl}/api/v1/games/yihuan/vehicles`,
+        query: queryString({ roleId: data.roleId })
+      },
+      yihuan_team_recommendations: {
+        url: `${baseUrl}/api/v1/games/yihuan/team/recommendations`
+      },
+      yihuan_team: {
+        url: `${baseUrl}/api/v1/games/yihuan/team`,
         query: queryString({ roleId: data.roleId })
       }
     }

@@ -34,6 +34,10 @@ export class update extends plugin {
           reg: `^${PREFIX.tajiduo}强制更新$`,
           fnc: 'forceUpdate',
           permission: 'master'
+        },
+        {
+          reg: `^${PREFIX.yihuan}(更新记录|更新日志)$`,
+          fnc: 'updateLog'
         }
       ]
     })
@@ -117,5 +121,16 @@ export class update extends plugin {
 
   async forceUpdate() {
     return this.runUpdate(true)
+  }
+
+  async updateLog() {
+    const oldCommit = await this.commitId()
+    const lines = [
+      'TaJiDuo-plugin 更新记录',
+      `当前版本：${oldCommit}`,
+      '详细更新内容请查看插件 README 或 git 日志。'
+    ]
+    await this.reply(lines.join('\n'))
+    return true
   }
 }

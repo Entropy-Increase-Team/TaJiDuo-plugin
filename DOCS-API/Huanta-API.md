@@ -83,6 +83,12 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET /api/v1/games/huanta/community/exp/level` | 社区等级 | 查询经验等级 |
 | `GET /api/v1/games/huanta/community/exp/records` | 社区经验流水 | 查询经验记录 |
 
+补充：幻塔游戏签到状态、奖励表和单角色签到也可以走 TaJiDuo 公共接口：
+
+- `GET /api/v1/games/sign/state?gameId=1256`
+- `GET /api/v1/games/sign/rewards?gameId=1256&roleId=...`
+- `POST /api/v1/games/sign/game`，请求体传 `gameId=1256` 和 `roleId`
+
 ## 游戏接口
 
 ### `GET /api/v1/games/huanta/roles`

@@ -90,8 +90,15 @@
 | `GET /api/v1/games/shop/game-roles` | 指定游戏角色列表 |
 | `POST /api/v1/games/shop/exchange` | 商城商品兑换 |
 | `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
+| `GET /api/v1/games/roles/bind` | 查询指定游戏主绑定角色 |
+| `GET /api/v1/games/sign/state` | 查询指定游戏签到状态 |
+| `GET /api/v1/games/sign/rewards` | 查询指定游戏签到奖励表 |
+| `POST /api/v1/games/sign/game` | 指定游戏单角色签到 |
 | `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
 | `POST /api/v1/games/sign/all` | 跨游戏聚合签到 |
+| `GET /api/v1/community/posts/recommend` | 获取社区推荐帖子列表 |
+| `GET /api/v1/community/posts/full` | 获取社区帖子详情 / 上报浏览 |
+| `POST /api/v1/community/posts/like` | 点赞社区帖子 |
 | `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
 | `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
 | `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
@@ -1092,7 +1099,14 @@ X-Framework-Token: 0d53c6f8f56f4d7abf53dbf4f68e7856
 | `GET /api/v1/games` | 游戏列表 |
 | `GET /api/v1/login/laohu/area-codes` | 老虎登录区号列表 |
 | `POST /api/v1/games/roles/bind` | 绑定指定游戏主角色 |
+| `GET /api/v1/games/roles/bind` | 查询指定游戏主绑定角色 |
+| `GET /api/v1/games/sign/state` | 查询指定游戏签到状态 |
+| `GET /api/v1/games/sign/rewards` | 查询指定游戏签到奖励表 |
+| `POST /api/v1/games/sign/game` | 指定游戏单角色签到 |
 | `GET /api/v1/games/sign/reward-records` | 游戏签到奖励领取记录 |
+| `GET /api/v1/community/posts/recommend` | 获取社区推荐帖子列表 |
+| `GET /api/v1/community/posts/full` | 获取社区帖子详情 / 上报浏览 |
+| `POST /api/v1/community/posts/like` | 点赞社区帖子 |
 | `POST /api/v1/community/posts/share` | 上报帖子分享任务 |
 | `GET /api/v1/community/posts/share-data` | 获取帖子分享数据 |
 | `GET /api/v1/community/web/all` | Web 社区/栏目列表 |
@@ -1172,6 +1186,131 @@ JSON 请求体：
 }
 ```
 
+#### `GET /api/v1/games/roles/bind`
+
+用途：查询当前塔吉多账号在指定游戏下的主绑定角色。
+
+查询参数：
+
+- `gameId`：必填，例如异环 `1289`、幻塔 `1256`
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "uid": "214075351008",
+      "roleName": "清",
+      "gameId": 1289
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/sign/state`
+
+查询参数：
+
+- `gameId`：必填，例如异环 `1289`、幻塔 `1256`
+
+用途：查询指定游戏的签到状态。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "day": 23,
+      "days": 0,
+      "month": 4,
+      "reSignCnt": 0,
+      "todaySign": false
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/games/sign/rewards`
+
+查询参数：
+
+- `gameId`：必填，例如异环 `1289`、幻塔 `1256`
+- `roleId`：可选，部分游戏奖励表会按角色区分
+
+用途：查询指定游戏的签到奖励表。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": [
+      {
+        "name": "墨晶",
+        "num": 50
+      }
+    ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `POST /api/v1/games/sign/game`
+
+用途：对指定游戏的指定角色执行一次游戏签到。
+
+JSON 请求体：
+
+```json
+{
+  "gameId": "1289",
+  "roleId": "214075351008"
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {},
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
 #### `GET /api/v1/games/sign/reward-records`
 
 查询参数：
@@ -1193,6 +1332,107 @@ JSON 请求体：
         "num": 10000
       }
     ],
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/posts/recommend`
+
+查询参数：
+
+- `communityId`：必填，例如异环 `2`、幻塔 `1`
+- `page`：可选，默认 `1`
+- `count`：可选，默认 `20`
+- `version`：可选
+
+用途：获取社区推荐帖子列表。可用于社区每日任务里的浏览、点赞、分享候选帖子。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "posts": [
+        {
+          "postId": 123456,
+          "communityId": 2,
+          "subject": "帖子标题"
+        }
+      ],
+      "hasMore": false
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `GET /api/v1/community/posts/full`
+
+查询参数：
+
+- `postId`：必填
+
+用途：获取帖子详情。对移动端上游来说，这个接口也会被用于浏览帖子任务。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": {
+      "post": {
+        "postId": 123456,
+        "communityId": 2,
+        "subject": "帖子标题",
+        "content": "帖子正文"
+      }
+    },
+    "upstream": {
+      "success": true,
+      "httpStatus": 200,
+      "code": 0,
+      "message": "ok"
+    }
+  }
+}
+```
+
+#### `POST /api/v1/community/posts/like`
+
+JSON 请求体：
+
+```json
+{
+  "postId": "123456"
+}
+```
+
+用途：点赞社区帖子。上游返回的 `data` 通常是布尔值，表示本次动作是否计入。
+
+响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "成功",
+  "data": {
+    "data": true,
     "upstream": {
       "success": true,
       "httpStatus": 200,
